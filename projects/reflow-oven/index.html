@@ -19,8 +19,6 @@
 <style>
   /* handwritten calculation pages: keep them page-sized instead of full column width */
   figure.page { max-width: 340px; }
-  /* marker between the 2024 build and the 2026 controls project */
-  .part { margin: 72px 0 -48px; padding-top: 18px; border-top: 1px solid var(--rule); }
   .downloads { display: flex; flex-wrap: wrap; gap: 0 10px; }
 </style>
 </head>
@@ -31,14 +29,14 @@
   <div class="links"><a href="../../#projects">Projects</a><a href="#contact">Contact</a></div>
 </nav>
 
-<div class="cover"><div class="thumb" style="--focus:88% 50%"><img src="../../assets/img/reflow-oven/cover.jpg" alt="The finished reflow oven: a Hamilton Beach toaster oven with a black 3D-printed face plate holding the touchscreen, two LEDs and a switch"></div></div>
+<div class="cover"><div class="thumb" style="--focus:50% 50%"><img src="../../assets/img/reflow-oven/cover.jpg" alt="The reflow oven on a cutting mat: a Hamilton Beach toaster oven with a black 3D-printed face plate holding the touchscreen, two LEDs and a switch"></div></div>
 
 <header class="head">
   <div class="crumb"><a href="../../#projects">Projects</a> / Embedded</div>
   <h1>Reflow Oven</h1>
-  <p class="dek">Consumer reflow ovens are expensive and need a lot of mods to work well, so we built our own from a toaster oven. In 2026 I went back and designed its temperature controller properly, from a model of the oven.</p>
+  <p class="dek">My brother and I turned a $50 toaster oven into a reflow oven. In spring 2026, I went back and designed its temperature controller properly: modeled from measured data, verified in Simulink, then tuned on the real oven.</p>
   <div class="specs">
-    <div><span class="eyebrow">Role</span><b>PCB, firmware &amp; GUI</b></div>
+    <div><span class="eyebrow">Role</span><b>PCB, Firmware &amp; GUI</b></div>
     <div><span class="eyebrow">Timeline</span><b>2024 · 2026</b></div>
     <div><span class="eyebrow">Key parts</span><b>ESP32 · PT100 · SSR</b></div>
     <div><span class="eyebrow">Read</span><b data-readtime>— min</b></div>
@@ -50,20 +48,39 @@
 
   <article>
     <h2 id="overview">Overview</h2>
-    <p>We are going to be building a lot of SMD PCBs in the future and so we want to invest in a reflow oven. However, the current consumer reflow ovens are very expensive and require a lot of mods to work well. For these reasons, we decided to build our reflow oven.</p>
+    <p>We are going to be building a lot of SMD PCBs, so we wanted a reflow oven. However, consumer reflow ovens are very expensive and require a lot of mods to work well, so my brother and I turned a $50 Hamilton Beach toaster oven into our own. It worked, but the temperature controller was tuned by trial and error: change a gain, run a cycle, wait for the oven to cool down, and try again. It was good enough to solder boards, but I couldn't really explain why the gains were what they were.</p>
+    <p>In spring 2026, I took a controls class (EECE 5580), and for the final project, I decided to go back and do it properly. This time, I modeled the oven from measured data, designed the controller with the math I learnt in class, simulated it in Simulink, and then ran it on the real oven.</p>
     <figure>
       <video controls muted playsinline preload="metadata" src="../../assets/video/reflow-oven/overview.mp4" poster="../../assets/video/reflow-oven/overview.jpg"></video>
       <figcaption>Loading a board, running a reflow cycle, and the finished board.</figcaption>
     </figure>
 
-    <h2 id="requirements">Requirements</h2>
+    <h2 id="background">Background</h2>
+    <p>To solder SMD components with solder paste, the board has to follow a specific temperature profile. I use lead-free paste, and its profile has four stages:</p>
     <ul>
-      <li>It should be able to fit a medium-sized board.</li>
-      <li>It should look aesthetically pleasing (Wires should not be dangling around.)</li>
-      <li>Must be less than $10</li>
+      <li><strong>Preheat:</strong> ramp from room temperature (25°C) to 150°C in about 90 seconds.</li>
+      <li><strong>Soak:</strong> slowly climb from 150°C to 175°C over the next 90 seconds so the flux activates and the whole board heats up evenly.</li>
+      <li><strong>Reflow:</strong> ramp up past the melting point of the solder (217°C) to a peak of 249°C at the 240-second mark.</li>
+      <li><strong>Cooling:</strong> bring the temperature back down. My oven doesn't have active cooling, so this part isn't controlled.</li>
     </ul>
+    <figure>
+      <img src="../../assets/img/reflow-oven/controls/reflow-profile.png" alt="Lead-free reflow profile: 25°C to 150°C by 90 s, 175°C at 180 s, 217°C at 210 s, peak 249°C at 240 s, then cooling" loading="lazy">
+      <figcaption>Lead-free reflow profile.</figcaption>
+    </figure>
+    <p>What makes this hard is that the oven is slow and delayed. When the heater turns on, the temperature sensor doesn't see anything for a while because the heat has to travel through the air and metal in the oven first. That delay is called dead time, and it's the main reason my old trial-and-error tuning was so painful.</p>
 
-    <h2 id="pcb">PCB Design</h2>
+
+    <h2 id="hardware">Hardware</h2>
+    <p>Before getting into the controller, here's what it's actually driving. When we first built the oven, we wanted it to fit a medium-sized board and look clean, with no wires dangling around. Here's a quick look at the build:</p>
+    <ul>
+      <li><strong>Oven:</strong> a Hamilton Beach toaster oven, lined with a ceramic blanket and aluminum reflective tape to hold in heat.</li>
+      <li><strong>Heater:</strong> the heating elements are switched by a solid-state relay. The ESP32 drives the relay with a PWM duty cycle from 0 to 255, which is the input the controller gets to adjust.</li>
+      <li><strong>Sensor:</strong> a PT100 RTD probe inside the oven cavity measures the temperature that the controller feeds back on.</li>
+      <li><strong>Controller board:</strong> a custom PCB I designed in KiCad and had fabricated by JLCPCB, so there are no loose wires. It holds the ESP32, terminal blocks, status LEDs, and a buzzer, and runs off a 12V 1A power supply.</li>
+      <li><strong>Interface:</strong> a 240 x 320 SPI touch display with a GUI I designed in Adobe Illustrator, mounted in a 3D-printed face plate designed in Fusion 360.</li>
+    </ul>
+    <p>Put together, the control loop is simple: the RTD measures the oven temperature, the ESP32 computes a duty cycle, and the solid-state relay turns the heater on and off to match it. Everything in the rest of this project lives in the ESP32's firmware.</p>
+    <h3 id="pcb">PCB design</h3>
     <p>I designed a custom PCB to make sure there are no loose wires lying around. This PCB was designed in KiCad and fabricated using JLCPCB.</p>
     <figure>
       <div class="row">
@@ -77,7 +94,7 @@
       <figcaption>The fabricated board from JLCPCB.</figcaption>
     </figure>
 
-    <h2 id="cad">CAD</h2>
+    <h3 id="cad">Face plate</h3>
     <div class="side">
       <div class="text"><p>The face plate was designed in Fusion 360 and it was fabricated using a 3D printer.</p></div>
       <figure>
@@ -86,7 +103,7 @@
       </figure>
     </div>
 
-    <h2 id="firmware">Firmware</h2>
+    <h3 id="firmware">Firmware</h3>
     <div class="side">
       <div class="text"><p>The code was developed in Arduino using Platform.io for the ESP32. It was structured as a state machine, with state transitions triggered by touch commands to ensure efficient and organized control flow.</p></div>
       <figure>
@@ -95,7 +112,7 @@
       </figure>
     </div>
 
-    <h2 id="gui">GUI</h2>
+    <h3 id="gui">GUI</h3>
     <p>The GUI was designed in Adobe Illustrator, with the pages exported and converted into a .c file for deployment on the ESP32. The live graph was rendered using the drawPixel function from the TFT_eSPI library.</p>
     <figure>
       <div class="row n3">
@@ -109,7 +126,7 @@
       <figcaption>GUI pages for the 240 x 320 display.</figcaption>
     </figure>
 
-    <h2 id="components">Components</h2>
+    <h3 id="components">Parts list</h3>
     <ul>
       <li>Hamilton Beach toaster oven (<a href="https://www.amazon.com/gp/product/B08CW95ZFR/ref=ewc_pr_img_1?smid=ATVPDKIKX0DER&amp;psc=1" target="_blank" rel="noopener">link</a>)</li>
       <li>Panasonic Solid State relay <a href="https://www.digikey.com/en/products/detail/panasonic-electric-works/AQA211VL/2364682" target="_blank" rel="noopener">AQA211VL</a></li>
@@ -129,34 +146,7 @@
       <li>USB-C to Micro USB cable</li>
     </ul>
 
-    <!-- ===== Part 2: EECE 5580 controls project (text from Reflow_Oven_Controls_Website_Page.docx) ===== -->
-    <p class="part eyebrow">Part 2 · EECE 5580, spring 2026</p>
-    <h2 id="controls" data-toc="Tuning the controller">Tuning the controller with math</h2>
-    <p>A while back, my brother and I turned a $50 Hamilton Beach toaster oven into a reflow oven. It worked, but the temperature controller was tuned by trial and error: change a gain, run a cycle, wait for the oven to cool down, and try again. It was good enough to solder boards, but I couldn't really explain why the gains were what they were.</p>
-    <p>In spring 2026, I took a controls class (EECE 5580), and for the final project, I decided to go back and do it properly. This time, I modeled the oven from measured data, designed the controller with the math I learnt in class, simulated it in Simulink, and then ran it on the real oven.</p>
-    <figure>
-      <img src="../../assets/img/reflow-oven/oven-front.jpg" alt="Front view of the finished reflow oven on a cutting mat" loading="lazy">
-      <figcaption>The reflow oven from the front.</figcaption>
-    </figure>
-
-    <h3>Background</h3>
-    <p>To solder SMD components with solder paste, the board has to follow a specific temperature profile. I use lead-free paste, and its profile has four stages:</p>
-    <ul>
-      <li><strong>Preheat:</strong> ramp from room temperature (25°C) to 150°C in about 90 seconds.</li>
-      <li><strong>Soak:</strong> slowly climb from 150°C to 175°C over the next 90 seconds so the flux activates and the whole board heats up evenly.</li>
-      <li><strong>Reflow:</strong> ramp up past the melting point of the solder (217°C) to a peak of 249°C at the 240-second mark.</li>
-      <li><strong>Cooling:</strong> bring the temperature back down. My oven doesn't have active cooling, so this part isn't controlled.</li>
-    </ul>
-    <figure>
-      <img src="../../assets/img/reflow-oven/controls/reflow-profile.png" alt="Lead-free reflow profile: 25°C to 150°C by 90 s, 175°C at 180 s, 217°C at 210 s, peak 249°C at 240 s, then cooling" loading="lazy">
-      <figcaption>Lead-free reflow profile.</figcaption>
-    </figure>
-    <p>What makes this hard is that the oven is slow and delayed. When the heater turns on, the temperature sensor doesn't see anything for a while because the heat has to travel through the air and metal in the oven first. That delay is called dead time, and it's the main reason my old trial-and-error tuning was so painful.</p>
-
-    <h3>Hardware</h3>
-    <p>This project didn't change any hardware; the oven, PCB and GUI are the ones described above. Put together, the control loop is simple: the RTD measures the oven temperature, the ESP32 computes a duty cycle, and the solid-state relay turns the heater on and off to match it. Everything in the rest of this project lives in the ESP32's firmware.</p>
-
-    <h3>Design goals</h3>
+    <h2 id="goals">Design goals</h2>
     <ul>
       <li>The oven temperature must stay within ±5°C of the reflow profile.</li>
       <li>No hardware changes. The oven was already modified, so this is purely a controller and firmware upgrade.</li>
