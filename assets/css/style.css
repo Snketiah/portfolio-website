@@ -94,9 +94,9 @@ a { color: inherit; }
 .home-hero p.looking { margin-top: 12px; color: var(--ink); font-weight: 500; font-size: 16px; }
 
 .experience { max-width: var(--wrap); margin: 0 auto; padding: 8px var(--gut) 64px; }
-.experience h2 { font-size: 15px; font-weight: 600; margin: 0 0 20px; }
+.experience h2 { font-size: 24px; font-weight: 600; letter-spacing: -.015em; margin: 0 0 24px; }
 .jobs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
-@media (max-width: 760px) { .jobs { grid-template-columns: 1fr; } }
+@media (max-width: 560px) { .jobs { grid-template-columns: 1fr; } }
 .job { display: grid; gap: 4px; align-content: start; padding: 22px 24px; border: 1px solid var(--rule); border-radius: 8px; }
 .job .logo { height: 40px; display: flex; align-items: center; margin-bottom: 14px; }
 .job .logo img { width: auto; max-width: 100%; }
@@ -106,7 +106,7 @@ a { color: inherit; }
 
 .projects { max-width: var(--wrap); margin: 0 auto; padding: 8px var(--gut) 80px; }
 .projects-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
-.projects-head h2 { font-size: 15px; font-weight: 600; margin: 0; }
+.projects-head h2 { font-size: 24px; font-weight: 600; letter-spacing: -.015em; margin: 0; }
 .filters { display: flex; gap: 8px; flex-wrap: wrap; }
 .pill {
   font: 500 13.5px/1 var(--font); padding: 8px 13px; border-radius: 999px;
