@@ -1,0 +1,8 @@
+// Cloudflare deploy config: serve this folder as a static site.
+{
+  "name": "portfolio-website",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./"
+  }
+}
