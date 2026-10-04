@@ -13,7 +13,7 @@ tools/                     media.py (resize photos/videos), page-template.html, 
 
 ## Preview locally
 ```
-python3 -m http.server 8080
+python3 tools/serve.py
 ```
 then open http://localhost:8080. (Opening the files directly with file:// breaks the folder-style links.)
 
