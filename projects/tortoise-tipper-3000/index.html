@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tortoise Tipper 3000 · Steve Nketiah</title>
+<meta name="description" content="GE1501 group project: a gyroscope-triggered, servo-driven paddle that helps a flipped tortoise turn back over.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="../../assets/css/style.css">
+<link rel="icon" href="../../assets/img/favicon.svg" type="image/svg+xml">
+</head>
+<body>
+
+<nav class="nav">
+  <a class="mark" href="../../"><span class="chip">SN</span>Steve Nketiah</a>
+  <div class="links"><a href="../../#projects">Projects</a><a href="#contact">Contact</a></div>
+</nav>
+
+<div class="cover"><div class="thumb" style="--focus:50% 40%"><img src="../../assets/img/tortoise-tipper-3000/cover.jpg" alt="Mechanical drawing of the Tortoise Tipper: top and side views of the foam tortoise with the plastic bowl, breadboard, 9V battery, servo motor and wooden paddle"></div></div>
+
+<header class="head">
+  <div class="crumb"><a href="../../#projects">Projects</a> / Coursework</div>
+  <h1>Tortoise Tipper 3000</h1>
+  <p class="dek">Some tortoises can't flip themselves back over without a wall to push against. For this GE1501 project, my group designed a mechanism that helps them flip over.</p>
+  <div class="specs">
+    <div><span class="eyebrow">Role</span><b>Arduino code &amp; wiring</b></div>
+    <div><span class="eyebrow">Timeline</span><b>2022 · GE1501</b></div>
+    <div><span class="eyebrow">Key parts</span><b>Arduino · gyroscope · servo</b></div>
+    <div><span class="eyebrow">Read</span><b data-readtime>— min</b></div>
+  </div>
+</header>
+
+<div class="body">
+  <nav class="toc" aria-label="On this page"><span class="eyebrow">On this page</span></nav>
+
+  <article>
+    <h2 id="overview">Project overview</h2>
+    <div class="side">
+      <div class="text"><p>There are some tortoises that are left vulnerable when flipped over. They shake their limbs and shift their weight but because of the shape of their shell, they are not able to flip over quickly enough unless they are aided by a wall. So for this GE1501 project, my group members and I decided to design a mechanism that helped the turtles flip over.</p></div>
+      <figure>
+        <video data-auto src="../../assets/video/tortoise-tipper-3000/overview.mp4" poster="../../assets/video/tortoise-tipper-3000/overview.jpg" preload="metadata" muted playsinline loop></video>
+        <figcaption>The foam tortoise is placed on its back and the paddle flips it upright.</figcaption>
+      </figure>
+    </div>
+
+    <h2 id="objectives">Key Objectives</h2>
+    <ul>
+      <li>It must be Durable.</li>
+      <li>It must be Aesthetically Pleasing.</li>
+      <li>It must be Functional.</li>
+      <li>The total cost of the project should be less than $50.</li>
+    </ul>
+
+    <h2 id="contribution">Contribution to project</h2>
+    <h3>Arduino Code</h3>
+    <div class="side">
+      <div class="text"><p>I wrote the Arduino code that controlled a servo depending on the orientation the gyroscope reads. If the Arduino detects the tortoise has flipped over, it sends the signal for the servo to move a paddle which helps the tortoise flip over.</p></div>
+      <figure>
+        <img src="../../assets/img/tortoise-tipper-3000/arduino-code.jpg" alt="Arduino sketch: MPU6050 and servo setup, then reading and printing the accelerometer values in the loop" loading="lazy">
+        <figcaption>Start of the Arduino sketch: MPU6050 and servo setup.</figcaption>
+      </figure>
+    </div>
+
+    <h3>Circuit wiring</h3>
+    <div class="side">
+      <div class="text"><p>After writing the code, I connected the Arduino to the gyroscope and the servo.</p></div>
+      <figure>
+        <img src="../../assets/img/tortoise-tipper-3000/circuit.jpg" alt="Breadboard with an Arduino Nano, an MPU6050 gyroscope board, servo leads and a 9V battery" loading="lazy">
+        <figcaption>Arduino Nano, MPU6050 and servo leads on a breadboard, powered by a 9V battery.</figcaption>
+      </figure>
+    </div>
+
+    <div class="tags"><span class="pill">Arduino</span><span class="pill">MPU6050</span><span class="pill">Servo</span><span class="pill">GE1501</span></div>
+  </article>
+</div>
+
+<section class="gallery" aria-labelledby="gallery-h">
+  <div class="gallery-head"><h2 id="gallery-h">Gallery</h2><span class="label">5 photos</span></div>
+  <div class="gallery-grid">
+    <a href="../../assets/img/tortoise-tipper-3000/gallery/01.jpg"><img src="../../assets/img/tortoise-tipper-3000/gallery/01-sm.jpg" alt="The foam tortoise with the red plastic bowl and wooden paddle on top, held on with pink straps" loading="lazy"></a>
+    <a href="../../assets/img/tortoise-tipper-3000/gallery/03.jpg"><img src="../../assets/img/tortoise-tipper-3000/gallery/03-sm.jpg" alt="Mechanical drawing of the tortoise assembly: foam body, plastic bowl, breadboard, 9V battery, servo and paddle" loading="lazy"></a>
+    <a href="../../assets/img/tortoise-tipper-3000/gallery/02.jpg"><img src="../../assets/img/tortoise-tipper-3000/gallery/02-sm.jpg" alt="Mechanical drawing of the servo and paddle with dimensions in inches" loading="lazy"></a>
+    <a href="../../assets/img/tortoise-tipper-3000/gallery/04.jpg"><img src="../../assets/img/tortoise-tipper-3000/gallery/04-sm.jpg" alt="Hand sketch of the paddle swinging out from the shell above the breadboard" loading="lazy"></a>
+    <a href="../../assets/img/tortoise-tipper-3000/gallery/05.jpg"><img src="../../assets/img/tortoise-tipper-3000/gallery/05-sm.jpg" alt="The project poster board with the finished tortoise in front of it" loading="lazy"></a>
+  </div>
+</section>
+
+<section class="related" aria-labelledby="related-h">
+  <div class="related-head"><h2 id="related-h">More projects</h2><a href="../../#projects">All projects →</a></div>
+  <div class="grid">
+    <a class="card" href="../6dof-robot-arm/"><div class="thumb"><img src="../../assets/img/6dof-robot-arm/thumb.jpg" alt="" loading="lazy"></div><div><h3>6DOF Robot Arm</h3></div></a>
+    <a class="card" href="../force-controlled-gripper/"><div class="thumb"><img src="../../assets/img/force-controlled-gripper/thumb.jpg" alt="" loading="lazy"></div><div><h3>Force-Controlled Gripper</h3></div></a>
+    <a class="card" href="../reflow-oven/"><div class="thumb"><img src="../../assets/img/reflow-oven/thumb.jpg" alt="" loading="lazy"></div><div><h3>Reflow Oven</h3></div></a>
+  </div>
+</section>
+
+<footer class="foot" id="contact">
+  <span>© 2026 Steve Adinkrah Nketiah</span>
+  <a class="text" href="mailto:steve.adinkrah@gmail.com">steve.adinkrah@gmail.com</a>
+  <div class="socials">
+    <a class="icon li sm" href="https://www.linkedin.com/in/steve-nketiah-0841b5292/" target="_blank" rel="noopener" aria-label="LinkedIn"><img src="../../assets/img/linkedin.png" alt=""></a>
+    <a class="icon sm" href="mailto:steve.adinkrah@gmail.com" aria-label="Email"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm9 7.2L4.4 7H4v.8l8 5.4 8-5.4V7h-.4z"/></svg></a>
+  </div>
+</footer>
+
+<script src="../../assets/js/site.js"></script>
+</body>
+</html>

@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ryder Bike Computer · Steve Nketiah</title>
+<meta name="description" content="EECE capstone: a safety-focused bike computer with integrated GPS, cellular emergency communication and a wireless ECG heart rate chest strap.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="../../assets/css/style.css">
+<link rel="icon" href="../../assets/img/favicon.svg" type="image/svg+xml">
+</head>
+<body>
+
+<nav class="nav">
+  <a class="mark" href="../../"><span class="chip">SN</span>Steve Nketiah</a>
+  <div class="links"><a href="../../#projects">Projects</a><a href="#contact">Contact</a></div>
+</nav>
+
+<div class="cover"><div class="thumb" style="--focus:50% 50%"><img src="../../assets/img/ryder-bike-computer/cover.jpg" alt="Ryder handlebar unit in its 3D-printed enclosure, showing speed, GPS position, heart rate and an emergency call button"></div></div>
+
+<header class="head">
+  <div class="crumb"><a href="../../#projects">Projects</a> / Capstone</div>
+  <h1>Ryder Bike Computer</h1>
+  <p class="dek">This was my EECE capstone project where we designed a safety-focused bike computer with integrated GPS, cellular emergency communication, and wireless ECG heart rate monitoring. Developed production-ready hardware, including a miniaturized 4-layer main board and a complete ECG chest strap system with Bluetooth connectivity.</p>
+  <div class="specs">
+    <div><span class="eyebrow">Role</span><b>Hardware lead: main board &amp; ECG strap</b></div>
+    <div><span class="eyebrow">Timeline</span><b>Capstone · 2025</b></div>
+    <div><span class="eyebrow">Key parts</span><b>ESP32-S3 · SIM7000G · MAX30003</b></div>
+    <div><span class="eyebrow">Read</span><b data-readtime>— min</b></div>
+  </div>
+</header>
+
+<div class="body">
+  <nav class="toc" aria-label="On this page"><span class="eyebrow">On this page</span></nav>
+
+  <article>
+    <h2 id="what-is-ryder">What is Ryder?</h2>
+    <p>Ryder is a safety-focused bike computer system designed to make cycling safer and more accessible. Unlike expensive commercial bike computers ($600+) with complex, distracting interfaces, Ryder delivers essential safety features and ride data through a simple two-part system.</p>
+
+    <h2 id="system">The system</h2>
+    <div class="side wide-media">
+      <div class="text">
+        <h3>Handlebar unit</h3>
+        <ul>
+          <li>3.5″ touchscreen with real-time speed, GPS position, tilt/turn angles</li>
+          <li>One-touch emergency call with cellular location sharing</li>
+          <li>Peer connectivity monitoring (alerts if riding partner disconnects)</li>
+          <li>Built-in GPS and LTE cellular communication</li>
+        </ul>
+      </div>
+      <figure>
+        <img src="../../assets/img/ryder-bike-computer/handlebar-unit.jpg" alt="Handlebar unit with touchscreen showing GPS coordinates, 11.3 mph, 70 bpm and an Emergency Call button" loading="lazy">
+        <figcaption>Handlebar unit.</figcaption>
+      </figure>
+    </div>
+    <div class="side wide-media">
+      <div class="text">
+        <h3>Wireless ECG chest strap</h3>
+        <ul>
+          <li>Real-time BPM transmitted to main display via Bluetooth</li>
+          <li>Compact, low-profile design</li>
+          <li>Medical-grade heart rate monitoring via ECG electrodes</li>
+        </ul>
+      </div>
+      <figure>
+        <img src="../../assets/img/ryder-bike-computer/chest-strap.jpg" alt="ECG chest strap with its oval 3D-printed enclosure" loading="lazy">
+        <figcaption>ECG chest strap.</figcaption>
+      </figure>
+    </div>
+
+    <h2 id="features">Key features</h2>
+    <p><strong>Emergency Communication:</strong> Cellular alert sends GPS coordinates to emergency services, updating every 30 seconds. Works in areas where smartphones often fail due to LTE CAT-M1/NB-IoT capability.</p>
+    <p><strong>Peer Safety:</strong> Monitors Bluetooth connections between riders. Alerts group if someone falls behind or loses connection, sharing their last known GPS location.</p>
+    <p><strong>Accurate Tracking:</strong> Reed switch speed sensor and GPS provide reliable positioning (0.756 m stationary accuracy, 4.35 m moving accuracy). IMU captures tilt and turn angles for complete motion awareness.</p>
+    <p><strong>True Biometric Monitoring:</strong> Unlike optical sensors that struggle during exercise, the ECG chest strap provides clinical-grade heart rate accuracy through differential electrode measurement.</p>
+
+    <h2 id="users">Target users</h2>
+    <p>New cyclists, families with members with developmental disabilities, commuters, and recreational riders who need safety features and essential metrics without overwhelming complexity or high cost.</p>
+
+    <h2 id="contributions">My contributions</h2>
+
+    <h3>Main board redesign (Rev2): miniaturization &amp; integration</h3>
+    <p>Led the complete hardware redesign from a modular development board to a production-ready integrated system, achieving ~60% size reduction to 98 mm × 55 mm.</p>
+
+    <div class="side wide-media">
+      <div class="text">
+        <h4>Component integration</h4>
+        <p>Integrated previously external modules directly onto the PCB as individual ICs:</p>
+        <ul>
+          <li>TXS0102 bidirectional level shifters for voltage translation</li>
+          <li>ESP32-S3-N16R8 microcontroller (dual-core, 240 MHz)</li>
+          <li>SIM7000G GPS/cellular module with LTE CAT-M1/NB-IoT</li>
+          <li>ICM-20948 9-axis IMU (SPI interface)</li>
+          <li>3.5″ TFT LCD with capacitive touch controller</li>
+          <li>DRV2605 haptic motor driver</li>
+          <li>MAX17048 fuel gauge</li>
+          <li>MIC29302WU LDO regulator for 3.8 V power rail</li>
+        </ul>
+      </div>
+      <figure>
+        <img src="../../assets/img/ryder-bike-computer/mainboard-top.jpg" alt="Assembled Rev2 main board, top side, with the ESP32-S3 module" loading="lazy">
+        <figcaption>Assembled Rev2 main board, top side.</figcaption>
+      </figure>
+    </div>
+
+    <div class="side wide-media">
+      <div class="text">
+        <h4>PCB architecture</h4>
+        <ul>
+          <li>Implemented power management with MIC29302WU LDO regulator for dedicated 3.8 V rail serving SIM7000G analog circuits</li>
+          <li>Designed 4-layer PCB stackup with dedicated ground planes for signal integrity in dense layout</li>
+          <li>Integrated previously external modules (SIM7000G GPS/Cellular, haptic driver, IMU) directly as individual ICs</li>
+        </ul>
+      </div>
+      <figure>
+        <img src="../../assets/img/ryder-bike-computer/mainboard-layout.jpg" alt="PCB layout of the Rev2 main board" loading="lazy">
+        <figcaption>Rev2 main board layout.</figcaption>
+      </figure>
+    </div>
+
+    <div class="side">
+      <div class="text">
+        <h4>RF circuit design</h4>
+        <p>The cellular/GPS functionality required careful RF implementation:</p>
+        <ul>
+          <li>Calculated and routed 50 Ω impedance-matched traces from SIM7000G to antenna connector</li>
+          <li>Used specific trace widths based on 4-layer stackup dielectric constant</li>
+          <li>Minimized trace length and eliminated vias in RF path to reduce signal loss</li>
+          <li>Implemented ground plane stitching with via fencing around RF section</li>
+        </ul>
+      </div>
+      <figure>
+        <img src="../../assets/img/ryder-bike-computer/mainboard-rf.png" alt="Close-up of the GNSS and LTE antenna connectors next to the SIM7000G footprint" loading="lazy">
+        <figcaption>GNSS and LTE antenna connectors beside the SIM7000G.</figcaption>
+      </figure>
+    </div>
+
+    <h3>ECG chest strap: complete system design</h3>
+    <p>Designed and implemented a fully integrated wireless biometric monitoring system.</p>
+    <figure style="max-width:540px">
+      <img src="../../assets/img/ryder-bike-computer/ecg-system.png" alt="ECG chest strap system overview: electrodes to MAX30003 AFE, SPI to MCU, Bluetooth out, and serial to a USB converter and laptop" loading="lazy">
+      <figcaption>ECG chest strap system overview.</figcaption>
+    </figure>
+
+    <div class="side wide-media">
+      <div class="text">
+        <h4>Hardware design</h4>
+        <ul>
+          <li>Designed compact oval PCB (77 mm × 32 mm) to fit standard 45 mm-spaced electrode snap connectors</li>
+          <li>Selected and integrated STM32WB05KZV microcontroller for native Bluetooth LE support and low power consumption (64 MHz, sufficient for real-time DSP)</li>
+          <li>Integrated MAX30003 biopotential analog front-end with complete signal chain: differential amplification, programmable gain, 18-bit sigma-delta ADC</li>
+        </ul>
+      </div>
+      <figure>
+        <img src="../../assets/img/ryder-bike-computer/ecg-top.jpg" alt="Assembled oval ECG chest strap PCB with two electrode snap pads" loading="lazy">
+        <figcaption>Assembled ECG chest strap board.</figcaption>
+      </figure>
+    </div>
+
+    <div class="side">
+      <div class="text">
+        <h4>RF design</h4>
+        <ul>
+          <li>Achieved reliable wireless communication with main board</li>
+          <li>Implemented 2.4 GHz Bluetooth LE radio circuitry</li>
+          <li>Used external chip antenna connected via U.FL connector rather than PCB antenna to reduce first-revision risk</li>
+        </ul>
+      </div>
+      <figure>
+        <img src="../../assets/img/ryder-bike-computer/ecg-rf.png" alt="Close-up of the U.FL connector and crystal on the ECG board" loading="lazy">
+        <figcaption>U.FL antenna connector on the ECG board.</figcaption>
+      </figure>
+    </div>
+
+    <h4>Signal processing implementation</h4>
+    <ul>
+      <li>Configured AFE with 3.5 Hz high-pass filter to eliminate motion artifacts and baseline wander</li>
+      <li>Implemented 40 Hz digital low-pass filter for high-frequency noise attenuation</li>
+      <li>Developed R-R peak detection algorithm for real-time heart rate calculation from ECG waveform</li>
+      <li>Achieved clean ECG signal capture at 128 samples/second</li>
+    </ul>
+
+    <h4>Firmware architecture</h4>
+    <ul>
+      <li>Developed modular firmware for sensor acquisition, DSP, and BLE communication</li>
+      <li>Implemented real-time heart rate calculation from R-R intervals</li>
+      <li>Designed dual-interface capability: Bluetooth to main board and serial output for debugging</li>
+    </ul>
+
+    <h3>Mechanical design: enclosures</h3>
+    <div class="side">
+      <div class="text">
+        <h4>Main board enclosure</h4>
+        <ul>
+          <li>Optimized for 3D printing with appropriate tolerances</li>
+          <li>Designed custom enclosure for 100 mm × 60 mm Rev2 board</li>
+          <li>Incorporated cutouts for 3.5″ display, USB-C connector, and power switch</li>
+          <li>Designed mounting features for handlebar attachment</li>
+        </ul>
+      </div>
+      <figure>
+        <img src="../../assets/img/ryder-bike-computer/enclosure.png" alt="CAD model of the main board enclosure" loading="lazy">
+        <figcaption>Main board enclosure (CAD).</figcaption>
+      </figure>
+    </div>
+    <div class="side">
+      <div class="text">
+        <h4>ECG chest strap enclosure</h4>
+        <ul>
+          <li>Designed battery compartment access</li>
+          <li>Designed low-profile case for 77 mm × 32 mm oval PCB</li>
+          <li>Integrated snap connector cutouts for ECG electrodes</li>
+        </ul>
+      </div>
+      <figure>
+        <img src="../../assets/img/ryder-bike-computer/ecg-enclosure.png" alt="CAD model of the oval ECG chest strap enclosure" loading="lazy">
+        <figcaption>ECG chest strap enclosure (CAD).</figcaption>
+      </figure>
+    </div>
+
+    <h2 id="results">Results &amp; validation</h2>
+    <div class="side wide-media">
+      <div class="text">
+        <h3>GPS performance</h3>
+        <ul>
+          <li>Successfully demonstrated real-time position tracking during bike ride</li>
+          <li>Stationary Accuracy: 0.756 m RMSE, excellent for low-cost GPS</li>
+          <li>Moving Accuracy: 4.35 m RMSE during straight-line test</li>
+        </ul>
+      </div>
+      <figure>
+        <img src="../../assets/img/ryder-bike-computer/gps-stationary.png" alt="Scatter plot of stationary GPS measurements around a reference point, in metres east and north" loading="lazy">
+        <figcaption>Stationary GPS measurements around the reference point (true coordinates obscured).</figcaption>
+      </figure>
+    </div>
+
+    <h3>ECG signal quality</h3>
+    <ul>
+      <li>Clean ECG waveform capture at 128 SPS</li>
+      <li>Reliable R-R peak detection for heart rate calculation</li>
+      <li>Stable Bluetooth transmission to main board</li>
+    </ul>
+    <figure class="wide">
+      <img src="../../assets/img/ryder-bike-computer/ecg-plot.png" alt="ECG signal recorded at 128 samples per second, with regular R peaks" loading="lazy">
+      <figcaption>ECG signal captured by the chest strap at 128 SPS.</figcaption>
+    </figure>
+
+    <h3>System integration</h3>
+    <ul>
+      <li>Successful wireless communication between ECG chest strap and main board</li>
+      <li>Real-time display of speed, GPS coordinates, tilt angle, turn angle, and heart rate</li>
+      <li>Functional emergency call feature with cellular connectivity</li>
+      <li>Peer-to-peer connection monitoring with alerts</li>
+    </ul>
+
+    <div class="tags"><span class="pill">PCB design</span><span class="pill">RF</span><span class="pill">Bluetooth LE</span><span class="pill">ECG</span><span class="pill">ESP32</span><span class="pill">STM32</span></div>
+  </article>
+</div>
+
+<section class="gallery" aria-labelledby="gallery-h">
+  <div class="gallery-head"><h2 id="gallery-h">Gallery</h2><span class="label">6 images</span></div>
+  <div class="gallery-grid">
+    <a href="../../assets/img/ryder-bike-computer/gallery/01.jpg" data-caption="Rev2 main board render, top."><img src="../../assets/img/ryder-bike-computer/gallery/01-sm.jpg" alt="Render of the Rev2 main board, top side" loading="lazy"></a>
+    <a href="../../assets/img/ryder-bike-computer/gallery/02.jpg" data-caption="Rev2 main board render, bottom."><img src="../../assets/img/ryder-bike-computer/gallery/02-sm.jpg" alt="Render of the Rev2 main board, bottom side" loading="lazy"></a>
+    <a href="../../assets/img/ryder-bike-computer/gallery/03.jpg" data-caption="Assembled Rev2 main board, bottom, with the SIM7000G module."><img src="../../assets/img/ryder-bike-computer/gallery/03-sm.jpg" alt="Assembled Rev2 main board, bottom side, with the SIM7000G module" loading="lazy"></a>
+    <a href="../../assets/img/ryder-bike-computer/gallery/04.jpg" data-caption="ECG chest strap board render, top."><img src="../../assets/img/ryder-bike-computer/gallery/04-sm.jpg" alt="Render of the ECG chest strap board, top side" loading="lazy"></a>
+    <a href="../../assets/img/ryder-bike-computer/gallery/05.jpg" data-caption="ECG chest strap board render, bottom."><img src="../../assets/img/ryder-bike-computer/gallery/05-sm.jpg" alt="Render of the ECG chest strap board, bottom side" loading="lazy"></a>
+    <a href="../../assets/img/ryder-bike-computer/gallery/06.jpg" data-caption="Assembled ECG chest strap board, bottom."><img src="../../assets/img/ryder-bike-computer/gallery/06-sm.jpg" alt="Assembled ECG chest strap board, bottom side" loading="lazy"></a>
+  </div>
+</section>
+
+<section class="related" aria-labelledby="related-h">
+  <div class="related-head"><h2 id="related-h">More projects</h2><a href="../../#projects">All projects →</a></div>
+  <div class="grid">
+    <a class="card" href="../pcba-test-fixture/"><div class="thumb"><img src="../../assets/img/pcba-test-fixture/thumb.jpg" alt="" loading="lazy"></div><div><h3>PCBA Test Fixture</h3></div></a>
+    <a class="card" href="../6dof-robot-arm/"><div class="thumb"><img src="../../assets/img/6dof-robot-arm/thumb.jpg" alt="" loading="lazy"></div><div><h3>6DOF Robot Arm</h3></div></a>
+    <a class="card" href="../reflow-oven/"><div class="thumb"><img src="../../assets/img/reflow-oven/thumb.jpg" alt="" loading="lazy"></div><div><h3>Reflow Oven</h3></div></a>
+  </div>
+</section>
+
+<footer class="foot" id="contact">
+  <span>© 2026 Steve Adinkrah Nketiah</span>
+  <a class="text" href="mailto:steve.adinkrah@gmail.com">steve.adinkrah@gmail.com</a>
+  <div class="socials">
+    <a class="icon li sm" href="https://www.linkedin.com/in/steve-nketiah-0841b5292/" target="_blank" rel="noopener" aria-label="LinkedIn"><img src="../../assets/img/linkedin.png" alt=""></a>
+    <a class="icon sm" href="mailto:steve.adinkrah@gmail.com" aria-label="Email"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm9 7.2L4.4 7H4v.8l8 5.4 8-5.4V7h-.4z"/></svg></a>
+  </div>
+</footer>
+
+<script src="../../assets/js/site.js"></script>
+</body>
+</html>

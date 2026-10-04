@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Steve Nketiah · Electrical Engineer</title>
+<meta name="description" content="Projects by Steve Adinkrah Nketiah, an electrical engineering Master's student at Northeastern focused on embedded systems and power electronics.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="assets/css/style.css">
+<link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+</head>
+<body>
+
+<nav class="nav">
+  <a class="mark" href="./"><span class="chip">SN</span>Steve Nketiah</a>
+  <div class="links"><a href="#projects">Projects</a><a href="#contact">Contact</a></div>
+</nav>
+
+<header class="home-hero">
+  <img class="avatar" src="assets/img/steve.jpg" alt="Steve Nketiah" width="448" height="448">
+  <div>
+    <h1>Hi, I'm Steve.</h1>
+    <p>I'm Steve Adinkrah Nketiah, an electrical engineering Master's student at Northeastern University (graduating in May 2027) focused on embedded systems and power electronics. Outside of class, I build projects like a 6DOF robot arm with my twin brother. When I'm not at the workbench, I'm usually watching F1 or playing soccer.</p>
+    <div class="socials">
+      <a class="icon li" href="https://www.linkedin.com/in/steve-nketiah-0841b5292/" target="_blank" rel="noopener" aria-label="LinkedIn" title="LinkedIn"><img src="assets/img/linkedin.png" alt=""></a>
+      <a class="icon" href="mailto:steve.adinkrah@gmail.com" aria-label="Email steve.adinkrah@gmail.com" title="steve.adinkrah@gmail.com"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm9 7.2L4.4 7H4v.8l8 5.4 8-5.4V7h-.4z"/></svg></a>
+    </div>
+  </div>
+</header>
+
+<main class="projects" id="projects">
+  <div class="projects-head">
+    <h2>Projects</h2>
+    <div class="filters" role="group" aria-label="Filter projects">
+      <button class="pill" data-filter="all" aria-pressed="true">All</button>
+      <button class="pill" data-filter="robotics" aria-pressed="false">Robotics</button>
+      <button class="pill" data-filter="power" aria-pressed="false">Power</button>
+      <button class="pill" data-filter="embedded" aria-pressed="false">Embedded</button>
+    </div>
+  </div>
+
+  <div class="grid" data-filterable>
+    <a class="card" href="projects/6dof-robot-arm/" data-tags="robotics embedded">
+      <div class="thumb"><img src="assets/img/6dof-robot-arm/thumb.jpg" alt="6DOF robot arm on a workbench" loading="lazy"></div>
+      <div><div class="meta"><h3>6DOF Robot Arm</h3><span class="label">2023–now</span></div>
+      <p>Custom robot controller, motor controllers and firmware across four revisions.</p></div>
+    </a>
+    <a class="card" href="projects/force-controlled-gripper/" data-tags="robotics embedded">
+      <div class="thumb"><img src="assets/img/force-controlled-gripper/thumb.jpg" alt="Force-controlled gripper" loading="lazy"></div>
+      <div><div class="meta"><h3>Force-Controlled Gripper</h3><span class="label">2026</span></div>
+      <p>Grips a potato chip or a 3D-printed cube. Cascaded PI control on a DC motor, under $40.</p></div>
+    </a>
+    <a class="card" href="projects/foc-motor-driver/" data-tags="power robotics">
+      <div class="thumb"><img src="assets/img/foc-motor-driver/thumb.jpg" alt="FOC motor driver PCB render" loading="lazy"></div>
+      <div><div class="meta"><h3>FOC Motor Driver</h3><span class="badge">In progress</span></div>
+      <p>12–60 V, 50 A BLDC driver on a 50 × 50 mm board for under $30.</p></div>
+    </a>
+    <a class="card" href="projects/power-distribution-board/" data-tags="power">
+      <div class="thumb"><img src="assets/img/power-distribution-board/thumb.jpg" alt="Power distribution board render" loading="lazy"></div>
+      <div><div class="meta"><h3>Power Distribution Board</h3><span class="badge">In progress</span></div>
+      <p>60 V / 30 A bus with precharge, current sensing and a brake chopper.</p></div>
+    </a>
+    <a class="card" href="projects/stepper-motor-drivers/" data-tags="robotics embedded power">
+      <div class="thumb"><img src="assets/img/stepper-motor-drivers/thumb.jpg" alt="Stepper motor driver PCB" loading="lazy"></div>
+      <div><div class="meta"><h3>Stepper Motor Drivers</h3><span class="label">2024–25</span></div>
+      <p>CAN FD drivers for the arm's NEMA 17 and NEMA 23 motors.</p></div>
+    </a>
+    <a class="card" href="projects/ryder-bike-computer/" data-tags="embedded">
+      <div class="thumb"><img src="assets/img/ryder-bike-computer/thumb.jpg" alt="Ryder bike computer" loading="lazy"></div>
+      <div><div class="meta"><h3>Ryder Bike Computer</h3><span class="label">Capstone · 2025</span></div>
+      <p>Safety-focused bike computer with GPS, cellular emergency calls and a wireless ECG chest strap.</p></div>
+    </a>
+    <a class="card" href="projects/pcba-test-fixture/" data-tags="embedded">
+      <div class="thumb"><img src="assets/img/pcba-test-fixture/thumb.jpg" alt="PCBA test fixture board" loading="lazy"></div>
+      <div><div class="meta"><h3>PCBA Test Fixture</h3><span class="label">Co-op · 2024</span></div>
+      <p>Bed-of-nails tester at 3D Fortify that cut board testing from 10 minutes to 30 seconds.</p></div>
+    </a>
+    <a class="card" href="projects/reflow-oven/" data-tags="embedded">
+      <div class="thumb"><img src="assets/img/reflow-oven/thumb.jpg" alt="DIY reflow oven" loading="lazy"></div>
+      <div><div class="meta"><h3>Reflow Oven</h3><span class="label">2024–26</span></div>
+      <p>A toaster oven turned reflow oven with an ESP32, a touchscreen GUI and a model-tuned temperature controller.</p></div>
+    </a>
+    <a class="card" href="projects/tortoise-tipper-3000/" data-tags="robotics">
+      <div class="thumb"><img src="assets/img/tortoise-tipper-3000/thumb.jpg" alt="Tortoise Tipper 3000" loading="lazy"></div>
+      <div><div class="meta"><h3>Tortoise Tipper 3000</h3><span class="label">2022</span></div>
+      <p>First-year design project: an Arduino-driven paddle that flips a tortoise back over.</p></div>
+    </a>
+  </div>
+</main>
+
+<footer class="foot" id="contact">
+  <span>© 2026 Steve Adinkrah Nketiah</span>
+  <a class="text" href="mailto:steve.adinkrah@gmail.com">steve.adinkrah@gmail.com</a>
+  <div class="socials">
+    <a class="icon li sm" href="https://www.linkedin.com/in/steve-nketiah-0841b5292/" target="_blank" rel="noopener" aria-label="LinkedIn"><img src="assets/img/linkedin.png" alt=""></a>
+    <a class="icon sm" href="mailto:steve.adinkrah@gmail.com" aria-label="Email"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm9 7.2L4.4 7H4v.8l8 5.4 8-5.4V7h-.4z"/></svg></a>
+  </div>
+</footer>
+
+<script src="assets/js/site.js"></script>
+</body>
+</html>

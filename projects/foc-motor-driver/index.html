@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FOC Motor Driver · Steve Nketiah</title>
+<meta name="description" content="A 12–60 V, 50 A field-oriented control (FOC) BLDC motor driver on a 50 × 50 mm board, designed for a robot actuator.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="../../assets/css/style.css">
+<link rel="icon" href="../../assets/img/favicon.svg" type="image/svg+xml">
+<!-- ONLY on pages with math: KaTeX (renders formulas in the LaTeX font) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.querySelector('article'),{delimiters:[{left:'$$',right:'$$',display:true},{left:'\\(',right:'\\)',display:false}]})"></script>
+<!-- /KaTeX -->
+<style>
+  /* MOSFET ranking table: 12 numeric columns, keep it compact */
+  .mosfet-table table { font-size: 13.5px; }
+  .mosfet-table th, .mosfet-table td { padding-right: 12px; }
+  .mosfet-table th { white-space: normal; min-width: 3.6em; text-transform: none; letter-spacing: .02em; font-size: 12px; }
+  .mosfet-table td:nth-child(2) { white-space: nowrap; }
+  .assume { columns: 2 240px; column-gap: 32px; }
+  .assume li { break-inside: avoid; }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a class="mark" href="../../"><span class="chip">SN</span>Steve Nketiah</a>
+  <div class="links"><a href="../../#projects">Projects</a><a href="#contact">Contact</a></div>
+</nav>
+
+<!-- Cover photo. --focus moves the crop point (x% y%). -->
+<div class="cover"><div class="thumb" style="--focus:50% 50%"><img src="../../assets/img/foc-motor-driver/cover.jpg" alt="3D render of the FOC motor driver PCB with bulk capacitors and a five-way screw terminal"></div></div>
+
+<header class="head">
+  <div class="crumb"><a href="../../#projects">Projects</a> / Power</div>
+  <h1>FOC Motor Driver</h1>
+  <p class="dek">As we start to build more dynamic robots, we will need actuators that can provide a good amount of torque at high speeds. This is the Field-Oriented Control driver I am designing for our upcoming actuator.</p>
+  <div class="specs">
+    <div><span class="eyebrow">Role</span><b>Hardware design</b></div>
+    <div><span class="eyebrow">Timeline</span><b>2026 · in progress</b></div>
+    <div><span class="eyebrow">Key parts</span><b>6EDL7151 · STM32C5 · A1333</b></div>
+    <div><span class="eyebrow">Read</span><b data-readtime>— min</b></div>
+  </div>
+</header>
+
+<div class="body">
+  <nav class="toc" aria-label="On this page"><span class="eyebrow">On this page</span></nav>
+
+  <article>
+    <h2 id="overview">Overview</h2>
+    <div class="side wide-media">
+      <div class="text">
+        <p>The 6DOF robot arm I built with my twin has one main limitation: it uses stepper motors. The coolest part about stepper motors is that they run open loop, which makes them very easy to control: all you need are step and direction pins. However, they have a major flaw. Their torque drops drastically as speed increases. As we start to build more dynamic robots, we will need actuators that can provide a good amount of torque at high speeds. For this, we are moving over to BLDC motors controlled using Field-Oriented Control (FOC). My role is to design the FOC driver for our upcoming actuator.</p>
+      </div>
+      <figure>
+        <img src="../../assets/img/foc-motor-driver/render-2.jpg" alt="3D render of the FOC driver board seen from above at an angle" loading="lazy">
+        <figcaption>Render of the board.</figcaption>
+      </figure>
+    </div>
+
+    <h2 id="goals">Design goals</h2>
+    <ul>
+      <li>Voltage: 12–60 V</li>
+      <li>Current: up to 50 A</li>
+      <li>Dimensions: 50 × 50 mm (similar to ODrive/Moteus)</li>
+      <li>Cost: Less than $30</li>
+    </ul>
+
+    <h2 id="mosfet">MOSFET</h2>
+    <p>The MOSFET is arguably the most important part of the driver. It is used in the inverter and it is responsible for converting the DC input into the AC voltage used to power the motor. When selecting a MOSFET, there were a lot of things I considered. The first was the voltage and current ratings, which should exceed my design ratings so the MOSFETs don’t get destroyed. Another factor that greatly affects MOSFET performance is thermal behavior. Even though most of the MOSFETs I considered had very high current ratings, thermal performance determines how much current we can actually run through them. So to choose a MOSFET, I calculated the power dissipated in each one (conduction, switching, and gate drive losses). Then I ranked them by junction temperature and chose the best one. Due to the space constraints of this board, I chose MOSFETs with a 5 × 6 mm footprint. The table below shows the results and the methodology.</p>
+
+    <h3 id="methodology">Methodology</h3>
+    <p>Every MOSFET is evaluated at the same operating point:</p>
+    <ul class="assume">
+      <li>Bus voltage \(V_{\mathrm{bus}} = 60\,\mathrm{V}\)</li>
+      <li>Load current \(I = 20\,\mathrm{A}\)</li>
+      <li>Duty \(D = 0.5\)</li>
+      <li>Switching frequency \(f_{\mathrm{sw}} = 25\,\mathrm{kHz}\)</li>
+      <li>Gate drive voltage \(V_{GS} = 10\,\mathrm{V}\)</li>
+      <li>Switching speed limit \((dv/dt)_{\max} = 2\,\mathrm{kV/\mu s}\)</li>
+      <li>Maximum gate current \(I_{g,\max} = 500\,\mathrm{mA}\) (the 6EDL7151’s highest programmable slew-rate current)</li>
+      <li>\(R_{DS(\mathrm{on})}\) hot factor \(k_{\mathrm{hot}} = 1.6\) at \(T_j \approx 125\,{}^\circ\mathrm{C}\) (one estimate for every part)</li>
+      <li>Ambient \(T_{\mathrm{amb}} = 25\,{}^\circ\mathrm{C}\), design limit \(T_{j,\mathrm{design}} = 125\,{}^\circ\mathrm{C}\)</li>
+    </ul>
+
+    <p><strong>Conduction loss</strong> uses the datasheet’s maximum \(R_{DS(\mathrm{on})}\) at 10 V, scaled up for temperature:</p>
+    <div class="math">$$P_{\mathrm{cond}} = I^2\, R_{DS(\mathrm{on})}\, k_{\mathrm{hot}}\, D$$</div>
+
+    <p><strong>Switching loss.</strong> The drain voltage swings during the Miller plateau, so to switch at the dv/dt limit the driver has to deliver the plateau charge \(Q_{gd}\) within \(t_v\). If that needs more than the driver can source, the gate current is capped at \(I_{g,\max}\) and the edge is slower. The same current charges \(Q_{gs2}\) and \(Q_{gd}\); delay times are left out.</p>
+    <div class="math">$$t_v = \frac{V_{\mathrm{bus}}}{(dv/dt)_{\max}}, \qquad I_g = \min\!\left(\frac{Q_{gd}}{t_v},\; I_{g,\max}\right)$$</div>
+    <div class="math">$$t_{\mathrm{on}} = t_{\mathrm{off}} = \frac{Q_{gs2} + Q_{gd}}{I_g}, \qquad P_{\mathrm{sw}} = \tfrac{1}{2}\, V_{\mathrm{bus}}\, I\, (t_{\mathrm{on}} + t_{\mathrm{off}})\, f_{\mathrm{sw}}$$</div>
+    <p>\(Q_{gs2}\) comes from the datasheet: the printed value if there is one, otherwise \(Q_{gs} - Q_{g(\mathrm{th})}\), otherwise \(Q_{sw} - Q_{gd}\), otherwise \(Q_{gs}\) as an upper bound.</p>
+
+    <p><strong>Gate drive loss</strong> is the gate charge energy per cycle. It does not depend on the gate current, and with a current-source driver most of it is dissipated in the driver, so charging it to the MOSFET is conservative. It is small (under 0.1 W).</p>
+    <div class="math">$$P_{\mathrm{gate}} = Q_g\, V_{GS}\, f_{\mathrm{sw}}$$</div>
+
+    <p><strong>Junction temperature</strong>, with no heat sink, uses each datasheet’s steady-state \(R_{th(j\text{-}a)}\) on the manufacturer’s own test board (typically 1 in² / 6 cm² of copper, so boards differ). The parts are ranked from lowest to highest \(T_j\).</p>
+    <div class="math">$$T_j = T_{\mathrm{amb}} + \left(P_{\mathrm{cond}} + P_{\mathrm{sw}} + P_{\mathrm{gate}}\right) R_{th(j\text{-}a)}$$</div>
+    <p>Not included: body-diode / dead-time loss, reverse recovery and \(C_{oss}\) loss.</p>
+
+    <h3 id="results">Results</h3>
+    <div class="table-wrap wide mosfet-table"><table>
+      <thead><tr>
+        <th class="num">Rank</th><th>Part</th><th class="num">V<sub>DS</sub> (V)</th><th class="num">R<sub>DS(on)</sub> (mΩ)</th><th class="num">I<sub>gate</sub> (mA)</th><th class="num">dv/dt (kV/µs)</th><th class="num">P<sub>cond</sub> (W)</th><th class="num">P<sub>sw</sub> (W)</th><th class="num">P<sub>gate</sub> (W)</th><th class="num">P<sub>total</sub> (W)</th><th class="num">R<sub>th(j-a)</sub> (°C/W)</th><th class="num">T<sub>j</sub> (°C)</th>
+      </tr></thead>
+      <tbody>
+        <tr class="pick"><td class="num">1</td><td>NTMFSC1D9N08X</td><td class="num">80</td><td class="num">1.9</td><td class="num">333</td><td class="num">2.00</td><td class="num">0.61</td><td class="num">1.53</td><td class="num">0.016</td><td class="num">2.15</td><td class="num">39</td><td class="num">109.0</td></tr>
+        <tr><td class="num">2</td><td>TPH4R008QM</td><td class="num">80</td><td class="num">4.0</td><td class="num">410</td><td class="num">2.00</td><td class="num">1.28</td><td class="num">1.32</td><td class="num">0.014</td><td class="num">2.61</td><td class="num">50</td><td class="num">155.6</td></tr>
+        <tr><td class="num">3</td><td>FDMS86300DC</td><td class="num">80</td><td class="num">3.1</td><td class="num">467</td><td class="num">2.00</td><td class="num">0.99</td><td class="num">2.57</td><td class="num">0.018</td><td class="num">3.58</td><td class="num">38</td><td class="num">161.1</td></tr>
+        <tr><td class="num">4</td><td>BSC040N10NS5</td><td class="num">100</td><td class="num">4.0</td><td class="num">400</td><td class="num">2.00</td><td class="num">1.28</td><td class="num">1.50</td><td class="num">0.015</td><td class="num">2.79</td><td class="num">50</td><td class="num">164.7</td></tr>
+        <tr><td class="num">5</td><td>TPH3R10AQM</td><td class="num">100</td><td class="num">3.1</td><td class="num">500</td><td class="num">1.36</td><td class="num">0.99</td><td class="num">1.92</td><td class="num">0.021</td><td class="num">2.93</td><td class="num">50</td><td class="num">171.6</td></tr>
+        <tr><td class="num">6</td><td>H100N10FB</td><td class="num">100</td><td class="num">4.0</td><td class="num">433</td><td class="num">2.00</td><td class="num">1.28</td><td class="num">1.80</td><td class="num">0.016</td><td class="num">3.10</td><td class="num">48</td><td class="num">173.6</td></tr>
+        <tr><td class="num">7</td><td>TPH6R008QM</td><td class="num">80</td><td class="num">6.0</td><td class="num">253</td><td class="num">2.00</td><td class="num">1.92</td><td class="num">1.42</td><td class="num">0.009</td><td class="num">3.35</td><td class="num">50</td><td class="num">192.5</td></tr>
+        <tr><td class="num">8</td><td>CSD19531Q5A</td><td class="num">100</td><td class="num">6.4</td><td class="num">220</td><td class="num">2.00</td><td class="num">2.05</td><td class="num">1.34</td><td class="num">0.009</td><td class="num">3.39</td><td class="num">50</td><td class="num">194.7</td></tr>
+        <tr><td class="num">9</td><td>DI100N10PQ</td><td class="num">100</td><td class="num">4.5</td><td class="num">400</td><td class="num">2.00</td><td class="num">1.44</td><td class="num">1.95</td><td class="num">0.019</td><td class="num">3.41</td><td class="num">50</td><td class="num">195.4</td></tr>
+        <tr><td class="num">10</td><td>AONS66917</td><td class="num">100</td><td class="num">3.5</td><td class="num">367</td><td class="num">2.00</td><td class="num">1.12</td><td class="num">2.37</td><td class="num">0.020</td><td class="num">3.51</td><td class="num">50</td><td class="num">200.6</td></tr>
+        <tr><td class="num">11</td><td>XPH4R10ANB</td><td class="num">100</td><td class="num">4.1</td><td class="num">500</td><td class="num">1.88</td><td class="num">1.31</td><td class="num">2.28</td><td class="num">0.019</td><td class="num">3.61</td><td class="num">50</td><td class="num">205.5</td></tr>
+        <tr><td class="num">12</td><td>BSC072N08NS5</td><td class="num">80</td><td class="num">7.2</td><td class="num">167</td><td class="num">2.00</td><td class="num">2.30</td><td class="num">1.44</td><td class="num">0.006</td><td class="num">3.75</td><td class="num">50</td><td class="num">212.5</td></tr>
+        <tr><td class="num">13</td><td>RS6P060BH</td><td class="num">100</td><td class="num">10.6</td><td class="num">210</td><td class="num">2.00</td><td class="num">3.39</td><td class="num">1.69</td><td class="num">0.006</td><td class="num">5.08</td><td class="num">41.7</td><td class="num">237.0</td></tr>
+        <tr><td class="num">14</td><td>H80N10FB</td><td class="num">100</td><td class="num">3.6</td><td class="num">383</td><td class="num">2.00</td><td class="num">1.15</td><td class="num">2.70</td><td class="num">0.017</td><td class="num">3.87</td><td class="num">55</td><td class="num">237.8</td></tr>
+        <tr><td class="num">15</td><td>TPH8R808QM</td><td class="num">80</td><td class="num">8.8</td><td class="num">180</td><td class="num">2.00</td><td class="num">2.82</td><td class="num">1.43</td><td class="num">0.006</td><td class="num">4.26</td><td class="num">50</td><td class="num">237.8</td></tr>
+        <tr><td class="num">16</td><td>AMR448N-CT</td><td class="num">100</td><td class="num">4.4</td><td class="num">500</td><td class="num">1.62</td><td class="num">1.41</td><td class="num">2.55</td><td class="num">0.017</td><td class="num">3.98</td><td class="num">56</td><td class="num">247.6</td></tr>
+        <tr><td class="num">17</td><td>NVMFWS004N10MCT1G</td><td class="num">100</td><td class="num">4.4</td><td class="num">500</td><td class="num">1.62</td><td class="num">1.41</td><td class="num">2.55</td><td class="num">0.017</td><td class="num">3.98</td><td class="num">56</td><td class="num">247.6</td></tr>
+        <tr><td class="num">18</td><td>RH6N040BH</td><td class="num">80</td><td class="num">8.3</td><td class="num">140</td><td class="num">2.00</td><td class="num">2.66</td><td class="num">2.16</td><td class="num">0.006</td><td class="num">4.83</td><td class="num">62.5</td><td class="num">326.6</td></tr>
+        <tr><td class="num">19</td><td>CSD19534Q5A</td><td class="num">100</td><td class="num">15.1</td><td class="num">107</td><td class="num">2.00</td><td class="num">4.83</td><td class="num">1.41</td><td class="num">0.004</td><td class="num">6.24</td><td class="num">50</td><td class="num">337.1</td></tr>
+        <tr><td class="num">20</td><td>RH6P040BH</td><td class="num">100</td><td class="num">15.6</td><td class="num">147</td><td class="num">2.00</td><td class="num">4.99</td><td class="num">1.68</td><td class="num">0.004</td><td class="num">6.67</td><td class="num">62.5</td><td class="num">442.1</td></tr>
+      </tbody>
+    </table></div>
+    <p class="table-note">Losses per MOSFET at the operating point above. The NTMFSC1D9N08X (highlighted) is the part I used. One more candidate, the AMR448N, is not ranked because its datasheet does not give Q<sub>g</sub> at 10 V.</p>
+
+    <h2 id="gate-driver">Gate driver</h2>
+    <div class="side wide-media bleed">
+      <div class="text">
+        <p>Most gate drivers I see in FOC projects use TI gate drivers. However, the TI part with the voltage rating I need, the DRV8353S, costs $4.27 per unit, so I looked for alternatives. I found the 6EDL7151XUMA1 by Infineon. One of the main reasons I chose it is that it allows finer control over the MOSFETs’ switching profile: the gate current can be configured separately for 4 stages of each switching transition, compared to a single setting on the TI. It also has a programmable gate voltage, better current shunt amplifier specs, and, most importantly, it is cheaper than the TI. It comes in at $2.55, about 40% cheaper than the TI.</p>
+      </div>
+      <figure>
+        <img src="../../assets/img/foc-motor-driver/gate-drive-profile.png" alt="Timing diagram of the 6EDL7151 gate current and gate-source voltage for the high-side and low-side MOSFETs, showing pre-charge, TDRIVE1, TDRIVE2 and hold current stages" loading="lazy">
+        <figcaption>Gate current profile of one switching transition, set in stages (pre-charge, T<sub>DRIVE1</sub>, T<sub>DRIVE2</sub>, hold). From the Infineon 6EDL7151 datasheet.</figcaption>
+      </figure>
+    </div>
+
+    <h2 id="current-sense">Current sense topology</h2>
+    <div class="side wide-media bleed">
+      <div class="text">
+        <p>The current control loop needs current feedback to work. For sensing the current, I went with low-side sensing instead of inline sensing. The main reason I went this route was cost. Inline sensing needs an external current sense amplifier (CSA). CSAs that can match the specs I need are over $2 each, and since I need 3, that would increase the BOM cost significantly. Low-side sensing, on the other hand, is supported by the internal CSAs in the gate driver, so there is no additional BOM cost.</p>
+      </div>
+      <figure class="tex-fig">
+        <img src="../../assets/img/foc-motor-driver/current-sense.svg" alt="Two three-phase inverter schematics. (a) Low-side shunts: a shunt resistor between each low-side MOSFET and ground, sensed by the gate driver's CSAs. (b) Inline shunts: a shunt resistor in each phase output, sensed by external CSAs.">
+        <figcaption>(a) Low-side shunts sit between each low-side MOSFET and ground, so the sensed voltage is ground-referenced and the gate driver’s internal CSAs can read it. (b) Inline shunts sit in the phase outputs, which swing between 0 V and V<sub>BUS</sub>, so they need external high common-mode CSAs.</figcaption>
+      </figure>
+    </div>
+
+    <h2 id="encoder">Magnetic encoder</h2>
+    <div class="side wide-media bleed">
+      <div class="text">
+        <p>The FOC algorithm needs position feedback to work. The cheapest way I could find was using a magnetic encoder paired with diametrically magnetized magnets placed on the rotor. The magnetic encoder uses the orientation of the magnet to determine the angular position of the rotor. I needed a magnetic encoder that has both a serial interface and incremental encoder signals. I chose the Allegro A1333. Its serial angle output is 12-bit, just like other encoders in this price range, but its incremental interface has 13-bit resolution. Other magnetic encoders in this price range don’t have incremental interfaces with such high resolution.</p>
+      </div>
+      <figure>
+        <video data-auto src="../../assets/video/foc-motor-driver/encoder.mp4" poster="../../assets/video/foc-motor-driver/encoder.jpg" preload="metadata" muted playsinline loop aria-label="Animation of a diametrically magnetized magnet rotating over the A1333 sensor, with its field lines and the measured angle"></video>
+        <figcaption>A diametrically magnetized magnet turning over the sensor. The field at the chip rotates with the magnet, and the A1333 reads its direction as an angle (12-bit serial output shown).</figcaption>
+      </figure>
+    </div>
+
+    <h2 id="mcu" data-toc="MCU &amp; other circuitry">MCU &amp; other circuitry</h2>
+    <p>I chose the STM32C5 series because it is very cheap, starting at around $2. I specifically went with the STM32C5A3RGT6 because it has 3 ADCs, so I can measure all 3 phases at the same time. It also has four 32-bit timers. I only need one, for the incremental encoder, but I haven’t seen another ST chip this cheap with four, so that really surprised me. I also added a CAN transceiver and an RS-485 driver for communicating with external encoder PCBs.</p>
+
+    <div class="tags"><span class="pill">PCB design</span><span class="pill">Field-oriented control</span><span class="pill">BLDC</span><span class="pill">Power electronics</span><span class="pill">STM32</span></div>
+  </article>
+</div>
+
+<!-- Three related projects (thumbs live at assets/img/<slug>/thumb.jpg) -->
+<section class="related" aria-labelledby="related-h">
+  <div class="related-head"><h2 id="related-h">More projects</h2><a href="../../#projects">All projects →</a></div>
+  <div class="grid">
+    <a class="card" href="../6dof-robot-arm/"><div class="thumb"><img src="../../assets/img/6dof-robot-arm/thumb.jpg" alt="" loading="lazy"></div><div><h3>6DOF Robot Arm</h3></div></a>
+    <a class="card" href="../power-distribution-board/"><div class="thumb"><img src="../../assets/img/power-distribution-board/thumb.jpg" alt="" loading="lazy"></div><div><h3>Power Distribution Board</h3></div></a>
+    <a class="card" href="../force-controlled-gripper/"><div class="thumb"><img src="../../assets/img/force-controlled-gripper/thumb.jpg" alt="" loading="lazy"></div><div><h3>Force-Controlled Gripper</h3></div></a>
+  </div>
+</section>
+
+<footer class="foot" id="contact">
+  <span>© 2026 Steve Adinkrah Nketiah</span>
+  <a class="text" href="mailto:steve.adinkrah@gmail.com">steve.adinkrah@gmail.com</a>
+  <div class="socials">
+    <a class="icon li sm" href="https://www.linkedin.com/in/steve-nketiah-0841b5292/" target="_blank" rel="noopener" aria-label="LinkedIn"><img src="../../assets/img/linkedin.png" alt=""></a>
+    <a class="icon sm" href="mailto:steve.adinkrah@gmail.com" aria-label="Email"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm9 7.2L4.4 7H4v.8l8 5.4 8-5.4V7h-.4z"/></svg></a>
+  </div>
+</footer>
+
+<script src="../../assets/js/site.js"></script>
+</body>
+</html>

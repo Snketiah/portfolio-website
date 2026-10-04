@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reflow Oven · Steve Nketiah</title>
+<meta name="description" content="A toaster oven turned into a reflow oven with a custom PCB, ESP32 firmware and a touchscreen GUI, later retuned with a model-based PI + feedforward temperature controller.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="../../assets/css/style.css">
+<link rel="icon" href="../../assets/img/favicon.svg" type="image/svg+xml">
+<!-- ONLY on pages with math: KaTeX (renders formulas in the LaTeX font) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.querySelector('article'),{delimiters:[{left:'$$',right:'$$',display:true},{left:'\\(',right:'\\)',display:false}]})"></script>
+<!-- /KaTeX -->
+<style>
+  /* handwritten calculation pages: keep them page-sized instead of full column width */
+  figure.page { max-width: 340px; }
+  /* marker between the 2024 build and the 2026 controls project */
+  .part { margin: 72px 0 -48px; padding-top: 18px; border-top: 1px solid var(--rule); }
+  .downloads { display: flex; flex-wrap: wrap; gap: 0 10px; }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a class="mark" href="../../"><span class="chip">SN</span>Steve Nketiah</a>
+  <div class="links"><a href="../../#projects">Projects</a><a href="#contact">Contact</a></div>
+</nav>
+
+<div class="cover"><div class="thumb" style="--focus:88% 50%"><img src="../../assets/img/reflow-oven/cover.jpg" alt="The finished reflow oven: a Hamilton Beach toaster oven with a black 3D-printed face plate holding the touchscreen, two LEDs and a switch"></div></div>
+
+<header class="head">
+  <div class="crumb"><a href="../../#projects">Projects</a> / Embedded</div>
+  <h1>Reflow Oven</h1>
+  <p class="dek">Consumer reflow ovens are expensive and need a lot of mods to work well, so we built our own from a toaster oven. In 2026 I went back and designed its temperature controller properly, from a model of the oven.</p>
+  <div class="specs">
+    <div><span class="eyebrow">Role</span><b>PCB, firmware &amp; GUI</b></div>
+    <div><span class="eyebrow">Timeline</span><b>2024 · 2026</b></div>
+    <div><span class="eyebrow">Key parts</span><b>ESP32 · PT100 · SSR</b></div>
+    <div><span class="eyebrow">Read</span><b data-readtime>— min</b></div>
+  </div>
+</header>
+
+<div class="body">
+  <nav class="toc" aria-label="On this page"><span class="eyebrow">On this page</span></nav>
+
+  <article>
+    <h2 id="overview">Overview</h2>
+    <p>We are going to be building a lot of SMD PCBs in the future and so we want to invest in a reflow oven. However, the current consumer reflow ovens are very expensive and require a lot of mods to work well. For these reasons, we decided to build our reflow oven.</p>
+    <figure>
+      <video controls muted playsinline preload="metadata" src="../../assets/video/reflow-oven/overview.mp4" poster="../../assets/video/reflow-oven/overview.jpg"></video>
+      <figcaption>Loading a board, running a reflow cycle, and the finished board.</figcaption>
+    </figure>
+
+    <h2 id="requirements">Requirements</h2>
+    <ul>
+      <li>It should be able to fit a medium-sized board.</li>
+      <li>It should look aesthetically pleasing (Wires should not be dangling around.)</li>
+      <li>Must be less than $10</li>
+    </ul>
+
+    <h2 id="pcb">PCB Design</h2>
+    <p>I designed a custom PCB to make sure there are no loose wires lying around. This PCB was designed in KiCad and fabricated using JLCPCB.</p>
+    <figure>
+      <div class="row">
+        <div class="cell"><img src="../../assets/img/reflow-oven/pcb-schematic.png" alt="KiCad schematic of the reflow oven board: 3.3 V power, ESP32, display connector, MOSFET drivers and buzzer, thermocouple amplifier" loading="lazy"><span class="label">Schematic</span></div>
+        <div class="cell"><img src="../../assets/img/reflow-oven/pcb-layout.jpg" alt="KiCad layout of the reflow oven board with terminal blocks around the edges and the ESP32 footprint in the middle" loading="lazy"><span class="label">Layout</span></div>
+      </div>
+      <figcaption>The board in KiCad.</figcaption>
+    </figure>
+    <figure>
+      <img src="../../assets/img/reflow-oven/pcb-photo.jpg" alt="The bare black reflow oven PCB held in a hand" loading="lazy">
+      <figcaption>The fabricated board from JLCPCB.</figcaption>
+    </figure>
+
+    <h2 id="cad">CAD</h2>
+    <div class="side">
+      <div class="text"><p>The face plate was designed in Fusion 360 and it was fabricated using a 3D printer.</p></div>
+      <figure>
+        <img src="../../assets/img/reflow-oven/face-plate-cad.png" alt="Fusion 360 model of the face plate with cut-outs for the display, two LEDs, a switch and a USB port" loading="lazy">
+        <figcaption>Face plate in Fusion 360.</figcaption>
+      </figure>
+    </div>
+
+    <h2 id="firmware">Firmware</h2>
+    <div class="side">
+      <div class="text"><p>The code was developed in Arduino using Platform.io for the ESP32. It was structured as a state machine, with state transitions triggered by touch commands to ensure efficient and organized control flow.</p></div>
+      <figure>
+        <img src="../../assets/img/reflow-oven/firmware-code.jpg" alt="The start of main.cpp: includes, pin definitions, PID variables and the Reflow_Mode enum" loading="lazy">
+        <figcaption>The top of <code>main.cpp</code>, ending in the <code>Reflow_Mode</code> states.</figcaption>
+      </figure>
+    </div>
+
+    <h2 id="gui">GUI</h2>
+    <p>The GUI was designed in Adobe Illustrator, with the pages exported and converted into a .c file for deployment on the ESP32. The live graph was rendered using the drawPixel function from the TFT_eSPI library.</p>
+    <figure>
+      <div class="row n3">
+        <div class="cell"><img src="../../assets/img/reflow-oven/gui-1.png" alt="GUI home page with Profiles and Bake buttons and the oven temperature" loading="lazy"></div>
+        <div class="cell"><img src="../../assets/img/reflow-oven/gui-2.png" alt="GUI profiles page listing the CQ NC191SNL50 solder paste, with a Home button" loading="lazy"></div>
+        <div class="cell"><img src="../../assets/img/reflow-oven/gui-3.png" alt="GUI page for the CQ NC191SNL50 profile with Abort and Start buttons" loading="lazy"></div>
+        <div class="cell"><img src="../../assets/img/reflow-oven/gui-4.png" alt="GUI bake page with plus and minus buttons for temperature and time, and a Start button" loading="lazy"></div>
+        <div class="cell"><img src="../../assets/img/reflow-oven/gui-5.png" alt="GUI open-oven warning page: caution, hot content, with an Okay button" loading="lazy"></div>
+        <div class="cell"><img src="../../assets/img/reflow-oven/gui-6.png" alt="GUI live graph of the reflow profile with time, temperature and mode readouts and an Abort button" loading="lazy"></div>
+      </div>
+      <figcaption>GUI pages for the 240 x 320 display.</figcaption>
+    </figure>
+
+    <h2 id="components">Components</h2>
+    <ul>
+      <li>Hamilton Beach toaster oven (<a href="https://www.amazon.com/gp/product/B08CW95ZFR/ref=ewc_pr_img_1?smid=ATVPDKIKX0DER&amp;psc=1" target="_blank" rel="noopener">link</a>)</li>
+      <li>Panasonic Solid State relay <a href="https://www.digikey.com/en/products/detail/panasonic-electric-works/AQA211VL/2364682" target="_blank" rel="noopener">AQA211VL</a></li>
+      <li>PT100 RTD Temperature Sensor (<a href="https://www.amazon.com/dp/B01N4LEVZN?ref=ppx_yo2ov_dt_b_fed_asin_title" target="_blank" rel="noopener">link</a>)</li>
+      <li>Ceramic Blanket (<a href="https://www.aliexpress.us/item/3256802930270704.html?spm=a2g0o.cart.0.0.20b138da8MZPSK&amp;mp=1&amp;gatewayAdapt=glo2usa" target="_blank" rel="noopener">link</a>)</li>
+      <li>Aluminum reflective tape</li>
+      <li>240 x 320 SPI Display</li>
+      <li>ESP32</li>
+      <li>12V 1A Power Supply (<a href="https://www.aliexpress.us/item/3256802541723599.html?spm=a2g0o.cart.0.0.390f38daALcrNV&amp;mp=1&amp;gatewayAdapt=glo2usa" target="_blank" rel="noopener">link</a>)</li>
+      <li>Cooling Fan</li>
+      <li>Green <a href="https://www.aliexpress.com/item/2251832715504953.html?spm=a2g0o.cart.0.0.76ee38daP2Q4bT&amp;mp=1" target="_blank" rel="noopener">LED</a></li>
+      <li>Red <a href="https://www.aliexpress.us/item/2251832715504953.html?spm=a2g0o.cart.0.0.76ee38daP2Q4bT&amp;mp=1&amp;gatewayAdapt=glo2usa" target="_blank" rel="noopener">LED</a></li>
+      <li>Buzzer</li>
+      <li>Switch</li>
+      <li>Relay</li>
+      <li>Terminal Blocks</li>
+      <li>USB-C to Micro USB cable</li>
+    </ul>
+
+    <!-- ===== Part 2: EECE 5580 controls project (text from Reflow_Oven_Controls_Website_Page.docx) ===== -->
+    <p class="part eyebrow">Part 2 · EECE 5580, spring 2026</p>
+    <h2 id="controls" data-toc="Tuning the controller">Tuning the controller with math</h2>
+    <p>A while back, my brother and I turned a $50 Hamilton Beach toaster oven into a reflow oven. It worked, but the temperature controller was tuned by trial and error: change a gain, run a cycle, wait for the oven to cool down, and try again. It was good enough to solder boards, but I couldn't really explain why the gains were what they were.</p>
+    <p>In spring 2026, I took a controls class (EECE 5580), and for the final project, I decided to go back and do it properly. This time, I modeled the oven from measured data, designed the controller with the math I learnt in class, simulated it in Simulink, and then ran it on the real oven.</p>
+    <figure>
+      <img src="../../assets/img/reflow-oven/oven-front.jpg" alt="Front view of the finished reflow oven on a cutting mat" loading="lazy">
+      <figcaption>The reflow oven from the front.</figcaption>
+    </figure>
+
+    <h3>Background</h3>
+    <p>To solder SMD components with solder paste, the board has to follow a specific temperature profile. I use lead-free paste, and its profile has four stages:</p>
+    <ul>
+      <li><strong>Preheat:</strong> ramp from room temperature (25°C) to 150°C in about 90 seconds.</li>
+      <li><strong>Soak:</strong> slowly climb from 150°C to 175°C over the next 90 seconds so the flux activates and the whole board heats up evenly.</li>
+      <li><strong>Reflow:</strong> ramp up past the melting point of the solder (217°C) to a peak of 249°C at the 240-second mark.</li>
+      <li><strong>Cooling:</strong> bring the temperature back down. My oven doesn't have active cooling, so this part isn't controlled.</li>
+    </ul>
+    <figure>
+      <img src="../../assets/img/reflow-oven/controls/reflow-profile.png" alt="Lead-free reflow profile: 25°C to 150°C by 90 s, 175°C at 180 s, 217°C at 210 s, peak 249°C at 240 s, then cooling" loading="lazy">
+      <figcaption>Lead-free reflow profile.</figcaption>
+    </figure>
+    <p>What makes this hard is that the oven is slow and delayed. When the heater turns on, the temperature sensor doesn't see anything for a while because the heat has to travel through the air and metal in the oven first. That delay is called dead time, and it's the main reason my old trial-and-error tuning was so painful.</p>
+
+    <h3>Hardware</h3>
+    <p>This project didn't change any hardware; the oven, PCB and GUI are the ones described above. Put together, the control loop is simple: the RTD measures the oven temperature, the ESP32 computes a duty cycle, and the solid-state relay turns the heater on and off to match it. Everything in the rest of this project lives in the ESP32's firmware.</p>
+
+    <h3>Design goals</h3>
+    <ul>
+      <li>The oven temperature must stay within ±5°C of the reflow profile.</li>
+      <li>No hardware changes. The oven was already modified, so this is purely a controller and firmware upgrade.</li>
+      <li>Math first. The controller must be designed from a model of the oven and verified in simulation before it touches the real oven.</li>
+    </ul>
+
+    <h2 id="model">Modeling the oven</h2>
+    <p>Thermal systems like this are usually modeled as a first-order plus dead-time (FOPDT) system:</p>
+    <div class="math">$$ P(s) = \frac{K}{\tau s + 1}\, e^{-\theta s} $$</div>
+    <p>\(K\) is the gain (how hot the oven eventually gets for a given heater duty cycle), \(\tau\) is the time constant (how fast it gets there), and \(\theta\) is the dead time. To find these values, I ran bump tests: starting from room temperature, I set the heater to a fixed duty cycle and logged the temperature every second until it stopped rising. I did this at 4 different duty cycles and fit the FOPDT model to each run using a least-squares curve fit in Python (I wrote the script with some help from Claude). Below are the results.</p>
+    <figure class="wide">
+      <img src="../../assets/img/reflow-oven/controls/bump-tests.png" alt="Four bump tests at 10, 25, 40 and 100 percent duty, each with measured temperature and the FOPDT fit overlaid" loading="lazy">
+      <figcaption>Bump tests at 26, 64, 102 and 255 out of 255 duty, with the FOPDT fit on top.</figcaption>
+    </figure>
+    <p>The model fits all 4 tests really well (R² above 0.999 for every one), so the FOPDT model is a good description of the oven.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th class="num">Duty (of 255)</th><th class="num">Normalized input</th><th class="num">K (°C)</th><th class="num">τ (s)</th><th class="num">θ (s)</th></tr></thead>
+      <tbody>
+        <tr><td class="num">26</td><td class="num">0.10</td><td class="num">913.0</td><td class="num">585.7</td><td class="num">52.7</td></tr>
+        <tr><td class="num">64</td><td class="num">0.25</td><td class="num">760.0</td><td class="num">482.9</td><td class="num">40.0</td></tr>
+        <tr class="pick"><td class="num">102</td><td class="num">0.40</td><td class="num">666.5</td><td class="num">395.3</td><td class="num">29.6</td></tr>
+        <tr><td class="num">255</td><td class="num">1.00</td><td class="num">404.8</td><td class="num">193.7</td><td class="num">19.5</td></tr>
+      </tbody>
+    </table></div>
+    <p>The first thing I noticed was that the numbers change a lot depending on the duty cycle. \(K\) and \(\theta\) both drop by about half from the lowest to the highest duty cycle, so the oven isn't really a linear system. I picked the 40% duty model because it sits near the middle of what the reflow profile demands on average:</p>
+    <div class="math">$$ G(s) = \frac{666.5}{395.3\, s + 1}\, e^{-29.6 s} $$</div>
+    <p>Since the numbers vary this much, whatever controller I designed would have to handle a model that isn't exactly right.</p>
+    <div class="downloads">
+      <a class="download" href="../../assets/files/reflow-oven/fopdt_fit.py" download><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 3h2v10.17l3.59-3.58L18 11l-6 6-6-6 1.41-1.41L11 13.17zM5 19h14v2H5z"/></svg>FOPDT fitting script (.py)</a>
+      <a class="download" href="../../assets/files/reflow-oven/bump_test_data.zip" download><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 3h2v10.17l3.59-3.58L18 11l-6 6-6-6 1.41-1.41L11 13.17zM5 19h14v2H5z"/></svg>Bump test data (4 CSVs, .zip)</a>
+    </div>
+
+    <h2 id="controller">Controller design</h2>
+    <h3>Why PI?</h3>
+    <p>Most of the reflow profile is a ramp, not a constant setpoint. The oven model has no integrator in it, so a proportional-only controller (or the PD controller I had before) would fall further and further behind a ramp. Adding an integrator (a PI controller) fixes that, and the steady-state error to a ramp becomes a finite value:</p>
+    <div class="math">$$ e_{ss} = \frac{R}{K K_i} $$</div>
+    <p>\(R\) is the ramp rate. So the plan was: use a PI controller and choose the gains so this error is less than 5°C.</p>
+    <figure class="page">
+      <img src="../../assets/img/reflow-oven/controls/calc-page1.png" alt="Handwritten derivation of the steady-state ramp error for a PI controller on the FOPDT plant" loading="lazy">
+      <figcaption>Handwritten steady-state error derivation.</figcaption>
+    </figure>
+
+    <h3>SIMC tuning</h3>
+    <p>To pick the gains, I used the SIMC tuning rules by Sigurd Skogestad. The idea is to pick the closed-loop response you want and solve for the controller that gives you that response. I chose a first-order response with the same dead time as the oven, since you can't get rid of the dead time:</p>
+    <div class="math">$$ \begin{gathered} T_{cl}(s) = \frac{e^{-\theta s}}{\tau_c s + 1} \\[10pt] C(s) = \frac{T_{cl}}{P(s)\,\bigl(1 - T_{cl}\bigr)} \end{gathered} $$</div>
+    <p>Approximating the dead time with a first-order Taylor expansion (\(e^{-\theta s} \approx 1 - \theta s\)) and simplifying gives the PI gains:</p>
+    <div class="math">$$ K_p = \frac{\tau}{K(\tau_c + \theta)}, \qquad K_i = \frac{1}{K(\tau_c + \theta)} $$</div>
+    <p>Here, \(\tau_c\) is the closed-loop time constant. It's the one knob you get to turn: smaller is faster and more aggressive, larger is slower and safer.</p>
+    <figure class="page">
+      <img src="../../assets/img/reflow-oven/controls/calc-page2.png" alt="Handwritten SIMC derivation of the PI gains" loading="lazy">
+      <figcaption>Handwritten SIMC derivation.</figcaption>
+    </figure>
+
+    <h3>PI alone isn't enough</h3>
+    <p>The steepest part of the profile is the preheat ramp, which goes from 25°C to 150°C in 90 seconds:</p>
+    <div class="math">$$ R = \frac{150 - 25}{90} \approx \frac{25}{18}\ {}^\circ\mathrm{C/s} $$</div>
+    <p>Plugging the SIMC gains into the steady-state error equation and requiring it to be less than 5°C gives:</p>
+    <div class="math">$$ \begin{gathered} R(\tau_c + \theta) < 5 \;\;\Rightarrow\;\; \tau_c < \frac{18}{5} - \theta \\[4pt] \tau_c < 3.6 - 29.6 = -26\ \mathrm{s} \end{gathered} $$</div>
+    <p>The closed-loop time constant would have to be negative, which is impossible. The dead time alone (29.6 s) is already way bigger than the 3.6 s budget. No matter how I tuned it, a PI controller by itself could not track this ramp within 5°C. This was the point where I realized why my old controller needed so much trial and error.</p>
+
+    <h3>Adding feedforward</h3>
+    <p>The fix is to stop making the feedback controller do all the work. Since I have a model of the oven, I can use it to calculate ahead of time how much heater power is needed to follow the ramp. Inverting the plant at low frequency gives:</p>
+    <div class="math">$$ u_{ff}(t) = \frac{\tau R + r(t)}{K} $$</div>
+    <p>\(r(t)\) is the current reference temperature and \(R\) is the current ramp rate. The \(r(t)/K\) part is the power needed to hold the oven at that temperature, and the \(\tau R/K\) part is the extra power needed to keep climbing at rate \(R\). On top of that, I advance the reference by \(\theta\) seconds, so by the time the heat actually reaches the sensor, it lines up with the profile.</p>
+    <p>The PI controller stays in the loop, but now it only has to clean up whatever small error is left over from the model not being perfect.</p>
+    <figure class="page">
+      <img src="../../assets/img/reflow-oven/controls/calc-page3.png" alt="Handwritten system parameters and feedforward calculation" loading="lazy">
+      <figcaption>Handwritten system parameters and feedforward calculation.</figcaption>
+    </figure>
+    <a class="download" href="../../assets/files/reflow-oven/handwritten_controller_calculations.pdf" download><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 3h2v10.17l3.59-3.58L18 11l-6 6-6-6 1.41-1.41L11 13.17zM5 19h14v2H5z"/></svg>Full handwritten calculations (PDF)</a>
+
+    <h2 id="simulation">Simulation</h2>
+    <p>I built the whole system in Simulink: the reflow profile and its derivative (for the ramp rate \(R\)), the feedforward block, the PI controller, a saturation block (since the heater duty cycle can only go from 0 to 100%), and the FOPDT oven model with the dead time.</p>
+    <figure class="wide">
+      <img src="../../assets/img/reflow-oven/controls/simulink-model.png" alt="Simulink model: reflow profile and its derivative, feedforward block, PID block, saturation, FOPDT plant with transport delay, and scopes" loading="lazy">
+      <figcaption>Simulink model of the system.</figcaption>
+    </figure>
+    <p>With the PI + feedforward controller, the simulated oven temperature sits right on top of the reference for the entire profile. The tracking error is less than a degree.</p>
+    <figure>
+      <div class="row">
+        <div class="cell"><img src="../../assets/img/reflow-oven/controls/sim-nominal-temperature.png" alt="Simulated reference and actual temperature overlapping for the whole profile" loading="lazy"><span class="label">Temperature (°C)</span></div>
+        <div class="cell"><img src="../../assets/img/reflow-oven/controls/sim-nominal-error.png" alt="Simulated tracking error, within about plus or minus 1.2 degrees" loading="lazy"><span class="label">Error (°C)</span></div>
+      </div>
+      <figcaption>Simulation with PI + feedforward. Time in seconds.</figcaption>
+    </figure>
+    <p>At this point, I was feeling pretty good about it. Then I ran it on the oven.</p>
+
+    <h2 id="testing">Testing on the oven</h2>
+    <h3>First hardware run</h3>
+    <p>I implemented the controller in the oven's firmware on the ESP32 and ran a full reflow cycle. The error went past ±15°C, about three times my spec. The oven ran way ahead of the setpoint on the preheat ramp and again at the start of the reflow stage.</p>
+    <figure>
+      <div class="row">
+        <div class="cell"><img src="../../assets/img/reflow-oven/controls/hw-first-run-temperature.png" alt="First hardware run: actual temperature running ahead of the setpoint" loading="lazy"><span class="label">Temperature</span></div>
+        <div class="cell"><img src="../../assets/img/reflow-oven/controls/hw-first-run-error.png" alt="First hardware run: tracking error reaching about 15 degrees" loading="lazy"><span class="label">Error</span></div>
+      </div>
+      <figcaption>First hardware run.</figcaption>
+    </figure>
+
+    <h3>What went wrong</h3>
+    <p>After looking at the data, I found three issues:</p>
+    <ul>
+      <li><strong>The dead time isn't constant.</strong> The 29.6 s dead time came from a bump test that started with a cold oven. Once the oven is hot, the dead time drops to about 5 s. So advancing the reference by 29.6 s pushed the oven way ahead of the profile for most of the cycle. To confirm this, I ran a test where I removed the dead-time advance after the preheat stage. The middle of the cycle got better, but the cold start got worse, which confirmed that \(\theta\) changes during the cycle.</li>
+      <li><strong>Feedforward is sensitive to the model.</strong> Since feedforward does most of the work, any mismatch between the model gain \(K\) and the real oven goes straight into the tracking error.</li>
+      <li><strong>The PI controller was too weak.</strong> The SIMC gains are on the conservative side, which is great when the model is accurate. Here, the model was off, and the PI controller didn't have enough authority to fix the error before the ramp was over.</li>
+    </ul>
+    <figure>
+      <div class="row">
+        <div class="cell"><img src="../../assets/img/reflow-oven/controls/hw-no-deadtime-after-preheat-temperature.png" alt="Hardware run with no dead-time advance after preheat: temperature" loading="lazy"><span class="label">Temperature</span></div>
+        <div class="cell"><img src="../../assets/img/reflow-oven/controls/hw-no-deadtime-after-preheat-error.png" alt="Hardware run with no dead-time advance after preheat: error" loading="lazy"><span class="label">Error</span></div>
+      </div>
+      <figcaption>Hardware run with no dead-time advance after preheat.</figcaption>
+    </figure>
+
+    <h3>Redesign</h3>
+    <p>Instead of jumping to something complicated like gain scheduling, I went back to the simulation and changed the design dead time from 29.6 s to 5 s to match what the oven does once it's warm. I kept the same SIMC structure and treated the proportional gain as a free parameter to sweep on the hardware.</p>
+    <p>Before flashing it, I checked it in simulation with the plant gain multiplied by 1.1 to fake a 10% model mismatch. The error still stayed within ±5°C, so it was worth trying on the oven.</p>
+    <figure class="wide">
+      <img src="../../assets/img/reflow-oven/controls/simulink-model-scaled-gain.png" alt="Simulink model with an extra gain block scaling the plant gain" loading="lazy">
+      <figcaption>Simulink model with the plant gain scaled.</figcaption>
+    </figure>
+    <figure>
+      <div class="row">
+        <div class="cell"><img src="../../assets/img/reflow-oven/controls/sim-gain1-1-temperature.png" alt="Simulation with 1.1 times plant gain: temperature" loading="lazy"><span class="label">Temperature (°C)</span></div>
+        <div class="cell"><img src="../../assets/img/reflow-oven/controls/sim-gain1-1-error.png" alt="Simulation with 1.1 times plant gain: error" loading="lazy"><span class="label">Error (°C)</span></div>
+      </div>
+      <figcaption>Simulation with 1.1× plant gain.</figcaption>
+    </figure>
+
+    <h3>Tuning Kp on the oven</h3>
+    <p>I tried 3 values of \(K_p\) on the real oven: 1×, 3×, and 5× the SIMC value. Below are the results.</p>
+    <figure class="wide">
+      <div class="row n3">
+        <div class="cell"><img src="../../assets/img/reflow-oven/controls/hw-1xKp-temperature.png" alt="Hardware run at 1 times Kp: temperature" loading="lazy"></div>
+        <div class="cell"><img src="../../assets/img/reflow-oven/controls/hw-3xKp-temperature.png" alt="Hardware run at 3 times Kp: temperature" loading="lazy"></div>
+        <div class="cell"><img src="../../assets/img/reflow-oven/controls/hw-5xKp-temperature.png" alt="Hardware run at 5 times Kp: temperature" loading="lazy"></div>
+        <div class="cell"><img src="../../assets/img/reflow-oven/controls/hw-1xKp-error.png" alt="Hardware run at 1 times Kp: error" loading="lazy"><span class="label">1× Kp</span></div>
+        <div class="cell"><img src="../../assets/img/reflow-oven/controls/hw-3xKp-error.png" alt="Hardware run at 3 times Kp: error" loading="lazy"><span class="label">3× Kp</span></div>
+        <div class="cell"><img src="../../assets/img/reflow-oven/controls/hw-5xKp-error.png" alt="Hardware run at 5 times Kp: error" loading="lazy"><span class="label">5× Kp</span></div>
+      </div>
+      <figcaption>Hardware runs at 1×, 3× and 5× the SIMC \(K_p\). Top: temperature. Bottom: error.</figcaption>
+    </figure>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Kp</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td>1×</td><td>Much better than the first run, but the error still drifts outside ±5°C on the steeper ramps.</td></tr>
+        <tr><td>3×</td><td>Error band gets tighter, but small oscillations start showing up in the soak stage.</td></tr>
+        <tr class="pick"><td>5×</td><td>Error stays within ±5°C for the entire profile. There are some small oscillations in the soak, but it meets the spec.</td></tr>
+      </tbody>
+    </table></div>
+    <p>This is the classic trade-off: the more aggressive the controller, the tighter the tracking, but the more it oscillates. At 5× \(K_p\), the oscillations in the soak are small and harmless, so I went with that.</p>
+
+    <h3>Robustness check</h3>
+    <p>I wanted to make sure 5× \(K_p\) wasn't just a lucky tune that only works with this exact model. So I changed the model gain in the controller to \(K = 759.9\) (the value from the 25% duty bump test). This is a 14% mismatch from the design value of 666.4. The controller stayed stable and the error stayed within ±5°C.</p>
+    <figure>
+      <div class="row">
+        <div class="cell"><img src="../../assets/img/reflow-oven/controls/hw-robustness-K759-9-temperature.png" alt="Robustness test with K = 759.9 and 5 times Kp: temperature" loading="lazy"><span class="label">Temperature</span></div>
+        <div class="cell"><img src="../../assets/img/reflow-oven/controls/hw-robustness-K759-9-error.png" alt="Robustness test with K = 759.9 and 5 times Kp: error within plus or minus 5 degrees" loading="lazy"><span class="label">Error</span></div>
+      </div>
+      <figcaption>Robustness test (\(K = 759.9\), 5× \(K_p\)).</figcaption>
+    </figure>
+
+    <h2 id="future">Limitations and future work</h2>
+    <ul>
+      <li><strong>Dead time:</strong> The controller uses one fixed dead time, but in reality, it changes as the oven heats up. Scheduling \(\theta\) with temperature or estimating it on the fly should give tighter tracking.</li>
+      <li><strong>Cooling:</strong> There's no active cooling, so the cooling stage is still open loop. Adding a fan or a vent would let the controller track the cooldown too.</li>
+      <li><strong>Automatic system identification:</strong> Right now, the bump tests are manual. I want the oven to run its own bump test and re-calculate \(K\), \(\tau\), and \(\theta\) by itself, so it can adapt as the heater ages or when the room temperature changes.</li>
+      <li><strong>Leaded profile:</strong> Add a leaded solder paste profile so the same oven can handle both.</li>
+    </ul>
+
+    <h2 id="learnt">What I learnt</h2>
+    <ul>
+      <li><strong>Simulation isn't reality.</strong> The simulation was nearly perfect, and the first hardware run was off by 15°C. The model is only as good as the assumptions behind it, and the one that broke here was the dead time being constant.</li>
+      <li><strong>Feedforward is powerful but picky.</strong> It's what made the ramps trackable, but when it's doing most of the work, a small error in the model turns into a big tracking error.</li>
+      <li><strong>Iterate.</strong> Simulate, test on hardware, figure out why they don't match, update the model, and repeat.</li>
+    </ul>
+
+    <h2 id="conclusion">Conclusion</h2>
+    <p>In the end, the oven now tracks the lead-free reflow profile within ±5°C and stays stable even with a 14% model mismatch. It still took a bit of tuning at the end (5× \(K_p\)), but this time, it was tuning with a reason behind it, and I can actually explain why the controller works.</p>
+    <div class="downloads">
+      <a class="download" href="../../assets/files/reflow-oven/Reflow_Oven_Controls_Report.pdf" download><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 3h2v10.17l3.59-3.58L18 11l-6 6-6-6 1.41-1.41L11 13.17zM5 19h14v2H5z"/></svg>Full project report (PDF)</a>
+      <a class="download" href="../../assets/files/reflow-oven/reflow_oven_simulation.slx" download><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 3h2v10.17l3.59-3.58L18 11l-6 6-6-6 1.41-1.41L11 13.17zM5 19h14v2H5z"/></svg>Simulink model (.slx)</a>
+    </div>
+
+    <div class="tags"><span class="pill">KiCad</span><span class="pill">ESP32</span><span class="pill">PlatformIO</span><span class="pill">Fusion 360</span><span class="pill">Simulink</span><span class="pill">Control systems</span></div>
+  </article>
+</div>
+
+<section class="gallery" aria-labelledby="gallery-h">
+  <div class="gallery-head"><h2 id="gallery-h">Gallery</h2><span class="label">4 photos</span></div>
+  <div class="gallery-grid">
+    <a href="../../assets/img/reflow-oven/gallery/01.jpg"><img src="../../assets/img/reflow-oven/gallery/01-sm.jpg" alt="The oven opened up during the build, with the ceramic blanket, wiring and the controller board" loading="lazy"></a>
+    <a href="../../assets/img/reflow-oven/gallery/02.jpg"><img src="../../assets/img/reflow-oven/gallery/02-sm.jpg" alt="The oven shell stripped down on the bench" loading="lazy"></a>
+    <a href="../../assets/img/reflow-oven/gallery/03.jpg"><img src="../../assets/img/reflow-oven/gallery/03-sm.jpg" alt="Checking the temperature probe against a multimeter, with the controller board in front of the oven" loading="lazy"></a>
+    <a href="../../assets/img/reflow-oven/gallery/04.jpg"><img src="../../assets/img/reflow-oven/gallery/04-sm.jpg" alt="The oven with its insulated door, the temperature probe and the controller board on the bench" loading="lazy"></a>
+  </div>
+</section>
+
+<section class="related" aria-labelledby="related-h">
+  <div class="related-head"><h2 id="related-h">More projects</h2><a href="../../#projects">All projects →</a></div>
+  <div class="grid">
+    <a class="card" href="../pcba-test-fixture/"><div class="thumb"><img src="../../assets/img/pcba-test-fixture/thumb.jpg" alt="" loading="lazy"></div><div><h3>PCBA Test Fixture</h3></div></a>
+    <a class="card" href="../stepper-motor-drivers/"><div class="thumb"><img src="../../assets/img/stepper-motor-drivers/thumb.jpg" alt="" loading="lazy"></div><div><h3>Stepper Motor Drivers</h3></div></a>
+    <a class="card" href="../ryder-bike-computer/"><div class="thumb"><img src="../../assets/img/ryder-bike-computer/thumb.jpg" alt="" loading="lazy"></div><div><h3>Ryder Bike Computer</h3></div></a>
+  </div>
+</section>
+
+<footer class="foot" id="contact">
+  <span>© 2026 Steve Adinkrah Nketiah</span>
+  <a class="text" href="mailto:steve.adinkrah@gmail.com">steve.adinkrah@gmail.com</a>
+  <div class="socials">
+    <a class="icon li sm" href="https://www.linkedin.com/in/steve-nketiah-0841b5292/" target="_blank" rel="noopener" aria-label="LinkedIn"><img src="../../assets/img/linkedin.png" alt=""></a>
+    <a class="icon sm" href="mailto:steve.adinkrah@gmail.com" aria-label="Email"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm9 7.2L4.4 7H4v.8l8 5.4 8-5.4V7h-.4z"/></svg></a>
+  </div>
+</footer>
+
+<script src="../../assets/js/site.js"></script>
+</body>
+</html>

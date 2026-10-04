@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Force-Controlled Gripper · Steve Nketiah</title>
+<meta name="description" content="A DIY robot gripper that controls how hard it squeezes, using a geared DC motor, cascaded PI control and a custom STM32 board, for under $40.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="../../assets/css/style.css">
+<link rel="icon" href="../../assets/img/favicon.svg" type="image/svg+xml">
+<!-- ONLY on pages with math: KaTeX (renders formulas in the LaTeX font) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.querySelector('article'),{delimiters:[{left:'$$',right:'$$',display:true},{left:'\\(',right:'\\)',display:false}]})"></script>
+<!-- /KaTeX -->
+<style>
+  /* wide block diagrams scroll sideways on phones instead of shrinking to unreadable text */
+  @media (max-width: 540px) {
+    .tex-fig.mscroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .tex-fig.mscroll img { max-width: none; width: var(--mw); margin: 0; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a class="mark" href="../../"><span class="chip">SN</span>Steve Nketiah</a>
+  <div class="links"><a href="../../#projects">Projects</a><a href="#contact">Contact</a></div>
+</nav>
+
+<div class="cover"><div class="thumb" style="--focus:42% 50%"><img src="../../assets/img/force-controlled-gripper/cover.jpg" alt="The gripper on the end of a robot arm, holding a potato chip between its black fingers"></div></div>
+
+<header class="head">
+  <div class="crumb"><a href="../../#projects">Projects</a> / Robotics</div>
+  <h1>Force-Controlled Gripper</h1>
+  <p class="dek">A DIY robot gripper that controls exactly how hard it squeezes, so it can grip something rigid like a 3D-printed cube or something as fragile as a potato chip. It cost under $40 to make.</p>
+  <div class="specs">
+    <div><span class="eyebrow">Role</span><b>Controls &amp; PCB design</b></div>
+    <div><span class="eyebrow">Timeline</span><b>2026</b></div>
+    <div><span class="eyebrow">Key parts</span><b>STM32G431 · DRV8876</b></div>
+    <div><span class="eyebrow">Read</span><b data-readtime>— min</b></div>
+  </div>
+</header>
+
+<div class="body">
+  <nav class="toc" aria-label="On this page"><span class="eyebrow">On this page</span></nav>
+
+  <article>
+    <h2 id="overview">Overview</h2>
+    <div class="side">
+      <div class="text">
+        <p>This robot gripper isn’t like other DIY grippers. It controls exactly how hard it squeezes, so it can firmly grip something rigid like a 3D-printed cube or something as fragile as a potato chip. The best part of this project is that this gripper cost us under $40 to make. Force-controlled grippers typically cost $100 or more. The reason ours is so cheap comes down to the motor I chose and how I drive it.</p>
+      </div>
+      <figure>
+        <video data-auto src="../../assets/video/force-controlled-gripper/grip-demo.mp4" poster="../../assets/video/force-controlled-gripper/grip-demo.jpg" preload="metadata" muted playsinline loop aria-label="The gripper picking up a 3D-printed cube, a small round fruit and a potato chip"></video>
+        <figcaption>Gripping objects from hard to soft.</figcaption>
+      </figure>
+    </div>
+
+    <h2 id="background">Background</h2>
+    <p>Most DIY grippers use the hobby servos found in Arduino kits; these servos are connected to a mechanism to convert the angular motion to linear motion to open and close the gripper. Because of how these servos are controlled, you can only command position, not force. The servo pushes as hard as it can to reach the commanded position, so the grip force isn’t something you control.</p>
+    <figure>
+      <video data-auto src="../../assets/video/force-controlled-gripper/servo-gripper.mp4" poster="../../assets/video/force-controlled-gripper/servo-gripper.jpg" preload="metadata" muted playsinline loop aria-label="A grey 3D-printed gripper driven by a hobby servo through a rack and pinion, opening and closing"></video>
+      <figcaption>A typical DIY gripper driven by a hobby servo. Video: @John87743.</figcaption>
+    </figure>
+    <p>Grippers that can control force usually go a completely different route: they use a BLDC motor driven by an FOC controller. That gives you torque control, which is what we're after, but a good FOC driver is expensive, and that drives up the cost of the whole gripper.</p>
+    <figure>
+      <img src="../../assets/img/force-controlled-gripper/ssg48-listing.png" alt="Source Robotics product page for the SSG-48 Adaptive Electric Gripper, priced at 599 euros" loading="lazy">
+      <figcaption>Source Robotics’ SSG-48 adaptive gripper for the PAROL6 arm, listed at €599.</figcaption>
+    </figure>
+    <p>In spring 2026, I took an electric drives course where I learnt about different motors and how they work. During a lab on PI control of DC motors, I thought to myself, “I think I can use a DC motor for a force-controlled gripper.” That’s how this project started.</p>
+
+    <h2 id="controller-design">Controller Design</h2>
+    <p>DC motors can be modeled as a resistor in series with an inductor and a voltage source (back EMF). The torque generated by the motor is a function of the current flowing through the motor. And so, by regulating the current passing through the motor, we can control the torque it generates, which would allow us to control the gripping force.</p>
+    <figure class="tex-fig"><img src="../../assets/img/force-controlled-gripper/dc-motor-model.svg" alt="DC motor model: armature current i_a flows through resistance R_a, inductance L_a and back-EMF source e_b in series" class="no-zoom"></figure>
+    <div class="math">$$ T_{em} = k_T\, i_a, \qquad e_b = k_E\, \omega $$</div>
+    <p>The issue is that since the back EMF depends on the motor's rotational speed, applying a constant voltage to the motor results in different current values at different speeds, so we need to design a controller for it.</p>
+
+    <h3>Selecting the Controller Gains</h3>
+    <p>The controller has three loops: a current loop on the inside, a speed loop around it, and a position loop on the outside. The current loop is the fastest, and each loop outside it is about 10 times slower. This lets us tune one loop at a time, since from the point of view of an outer loop, the inner loop responds almost instantly and can be treated as a gain of 1.</p>
+    <figure class="tex-fig wide mscroll" style="--mw:660px"><img src="../../assets/img/force-controlled-gripper/cascaded-loops.svg" alt="Block diagram of the cascaded position, speed and current loops: C_theta, C_omega and C_I in series with the motor electrical model, k_T, 1/Js and an integrator, with feedback of I_a, omega and theta" class="no-zoom"></figure>
+    <p>We also left out the gain of the PWM stage. The output of the current controller is treated as the voltage applied to the motor, \(V_a\). In the firmware, this voltage is converted to a duty cycle by dividing it by the measured bus voltage, \(d = V_a/V_d\), so the PWM stage just looks like a gain of 1 to the controller.</p>
+
+    <h3>Current Controller</h3>
+    <p>Writing KVL around the motor in the Laplace domain gives \(V_a(s) = (R_a + sL_a)\,I_a(s) + E_a(s)\). The back EMF changes a lot slower than the current, so we treat it as a disturbance and leave it out of the model. This leaves us with a first-order transfer function:</p>
+    <div class="math">$$ P_I(s) = \frac{I_a(s)}{V_a(s)} = \frac{1/R_a}{1+s\tau_e}, \qquad \tau_e = \frac{L_a}{R_a} $$</div>
+    <p>This is a type 0 system, so a proportional controller alone would leave some steady-state error. The integral term fixes this since it keeps acting until the error is zero, so we use a PI controller.</p>
+    <figure class="tex-fig"><img src="../../assets/img/force-controlled-gripper/current-loop.svg" alt="Current loop block diagram: PI controller k_pI + k_iI/s drives the motor electrical model, with back EMF E_a entering as a disturbance and I_a fed back" class="no-zoom"></figure>
+    <p>The open-loop transfer function is:</p>
+    <div class="math">$$ L_I(s) = \left(k_{pI} + \frac{k_{iI}}{s}\right)\frac{1/R_a}{1+s\tau_e} = k_{pI}\,\frac{s + k_{iI}/k_{pI}}{s}\cdot\frac{1/R_a}{1+s\tau_e} $$</div>
+    <p>To pick the gains, we place the zero of the PI controller on top of the motor's pole so that the two cancel out, \(k_{iI}/k_{pI} = 1/\tau_e\). This gives us a formula for \(k_{pI}\):</p>
+    <div class="math">$$ k_{pI} = k_{iI}\,\tau_e $$</div>
+    <p>But \(k_{pI}\) still depends on \(k_{iI}\), so we are not done yet. After the cancellation, the open-loop transfer function becomes a simple integrator:</p>
+    <div class="math">$$ L_I(s) = \frac{k_{iI}}{R_a\,s} $$</div>
+    <p>An integrator has a phase of \(-90^\circ\) at every frequency, so the phase margin is \(90^\circ\) no matter where the crossover frequency ends up. To find \(k_{iI}\), we set the magnitude of the open-loop transfer function to 1 at the crossover frequency \(\omega_{cI}\), which gives us both gains:</p>
+    <div class="math">$$ \boxed{k_{iI} = \omega_{cI}\,R_a, \qquad k_{pI} = \omega_{cI}\,L_a} $$</div>
+    <p>In a real system, things like the PWM update delay and the current sensor filter add some phase lag that gets worse at higher frequencies. So to keep a healthy phase margin, we place the crossover frequency 1 to 2 decades below the switching frequency.</p>
+
+    <h3>Speed Controller</h3>
+    <p>For the speed loop, we pick a crossover frequency about 10 times lower than the current loop. This lets us treat the current loop as a gain of 1, so going from the current command to speed is just the torque constant divided by the inertia:</p>
+    <figure class="tex-fig mscroll" style="--mw:480px"><img src="../../assets/img/force-controlled-gripper/speed-loop.svg" alt="Speed loop block diagram: PI controller k_pomega + k_iomega/s, the current loop as a gain of 1, k_T and 1/Js, with omega fed back" class="no-zoom"></figure>
+    <p>The open-loop transfer function is:</p>
+    <div class="math">$$ L_\omega(s) = \left(k_{p\omega} + \frac{k_{i\omega}}{s}\right)\frac{k_T}{J s} = \frac{k_T}{J}\,\frac{k_{p\omega}s + k_{i\omega}}{s^2} $$</div>
+    <p>We can't use pole-zero cancellation here. The pole is at the origin, so placing the PI zero there would cancel out the integral term. Instead, we pick a crossover frequency \(\omega_{c\omega}\) and a phase margin \(\phi_{pm}\), and use them to set up two equations at \(s = j\omega_{c\omega}\). The phase equation gives:</p>
+    <div class="math">$$ \angle L_\omega = -180^\circ + \arctan\!\frac{\omega_{c\omega}k_{p\omega}}{k_{i\omega}} \;\Rightarrow\; \tan\phi_{pm} = \frac{\omega_{c\omega}k_{p\omega}}{k_{i\omega}} $$</div>
+    <p>and the magnitude equation gives:</p>
+    <div class="math">$$ |L_\omega| = \frac{k_T}{J\omega_{c\omega}^2}\sqrt{k_{i\omega}^2 + \omega_{c\omega}^2k_{p\omega}^2} = 1 \;\Rightarrow\; \frac{k_T\,k_{p\omega}}{J\,\omega_{c\omega}\sin\phi_{pm}} = 1 $$</div>
+    <p>Solving these two equations gives us the gains:</p>
+    <div class="math">$$ \boxed{k_{p\omega} = \frac{J\,\omega_{c\omega}\sin\phi_{pm}}{k_T}, \qquad k_{i\omega} = \frac{J\,\omega_{c\omega}^2\cos\phi_{pm}}{k_T}} $$</div>
+    <p>A phase margin of around \(60^\circ\) is a good starting point.</p>
+
+    <h3>Position Controller</h3>
+    <p>The position loop is again about 10 times slower than the speed loop, so the speed loop is treated as a gain of 1. Going from speed to position is just an integration, so the system already has an integrator in it and won't have any steady-state error. This means a proportional controller is enough:</p>
+    <figure class="tex-fig"><img src="../../assets/img/force-controlled-gripper/position-loop.svg" alt="Position loop block diagram: proportional gain k_ptheta, the speed loop as a gain of 1 and an integrator 1/s, with theta fed back" class="no-zoom"></figure>
+    <div class="math">$$ L_\theta(s) = \frac{k_{p\theta}}{s} $$</div>
+    <p>Setting the magnitude to 1 at the crossover frequency gives us the gain:</p>
+    <div class="math">$$ \boxed{k_{p\theta} = \omega_{c\theta}} $$</div>
+    <p>This is also an integrator, so just like the current loop, the phase margin is \(90^\circ\).</p>
+    <p>If you want to learn more about DC motors or any other type of electric motor, <em>Electric Drives: An Integrative Approach</em> by Ned Mohan is a good book to read.</p>
+
+    <h2 id="hardware-design">Hardware Design</h2>
+    <p>I chose the JGB37-520 DC motor from AliExpress. It comes with a gearbox since the torque generated by the DC motor by itself is weak. It also has an incremental encoder, which I use to obtain the position of the rotor.</p>
+    <figure>
+      <img src="../../assets/img/force-controlled-gripper/dc-motor.jpg" alt="JGB37-520 geared DC motor held in a hand, with the encoder board on the back of the motor" loading="lazy">
+      <figcaption>The JGB37-520 geared DC motor, with its encoder on the back.</figcaption>
+    </figure>
+    <p>For implementing the controller, I designed a custom PCB. The MCU is the STM32G431RBT6; it is responsible for running the PI controller. It generates the PWM signal that is fed into the motor driver to vary the voltage across the motor terminals. The motor driver I chose for this was the DRV8876PWPR. I chose it because it reports the current flowing through the motor by using a low-side current mirror. However, this has some limitations compared with a shunt resistor. The first issue is that current is only available when the low-side FETs are on. This really isn’t a problem because I make sure at least one of the low-side FETs is always on. The second issue is that it doesn’t measure negative current, so it can’t measure regenerative current (when the motor acts as a generator). Since the motor is stalled against the object while gripping, this issue is not that big of a deal.</p>
+    <p>To determine the angular position of the motor, I fed the incremental encoder signals into a timer on the STM32, so any time I want the position, I just read it from the timer.</p>
+    <figure>
+      <div class="row">
+        <div class="cell"><img src="../../assets/img/force-controlled-gripper/pcb-front.jpg" alt="Front of the gripper controller PCB with the STM32G431 microcontroller, USB-C port and connectors" loading="lazy"><span class="label">Top</span></div>
+        <div class="cell"><img src="../../assets/img/force-controlled-gripper/pcb-back.jpg" alt="Back of the gripper controller PCB with the DRV8876 motor driver and two power inductors" loading="lazy"><span class="label">Bottom</span></div>
+      </div>
+      <figcaption>The controller PCB. The STM32G431 is on the top side and the DRV8876 motor driver on the bottom.</figcaption>
+    </figure>
+
+    <h2 id="testing">Testing</h2>
+    <div class="side wide-media">
+      <div class="text">
+        <p>To test the current controller, my brother designed a test rig that measures the stall torque of the motor using a lever arm and a load cell connected to an ESP32. This gave us a graph of motor current versus output torque, shown below.</p>
+      </div>
+      <figure>
+        <img src="../../assets/img/force-controlled-gripper/torque-jig.jpg" alt="Torque test rig: a white 3D-printed lever arm on the motor shaft rests on a 5 kg load cell" loading="lazy">
+        <figcaption>The torque test rig. The lever arm on the motor shaft presses on a load cell.</figcaption>
+      </figure>
+    </div>
+    <figure>
+      <img src="../../assets/img/force-controlled-gripper/torque-vs-current.svg" alt="Plot of output torque against motor current. Torque stays near zero up to about 0.18 A, then rises linearly to 130 mN·m at 0.6 A. Linear fit K_t = 0.310 N·m/A, R² = 0.9937" loading="lazy">
+      <figcaption>Output torque against motor current, measured on the test rig. The line is a least-squares fit to the points from the 0.15 A setpoint up.</figcaption>
+    </figure>
+    <p>From the results, the torque only starts to rise after ~150 mA. This is due to the friction in the gearbox. Once the current is enough to overcome the friction in the gearbox, there is a linear relationship between the current flowing through the motor and the torque produced. To correct for the friction, I added a dead zone to the controller.</p>
+    <p>Now we can move on to testing the velocity and position controllers. Below are the results.</p>
+    <figure>
+      <div class="row square">
+        <div class="cell"><video data-auto src="../../assets/video/force-controlled-gripper/velocity-control.mp4" poster="../../assets/video/force-controlled-gripper/velocity-control.jpg" preload="metadata" muted playsinline loop aria-label="Velocity control: the pointer on the motor shaft spins steadily"></video><span class="label">Velocity control</span></div>
+        <div class="cell"><video data-auto src="../../assets/video/force-controlled-gripper/position-control.mp4" poster="../../assets/video/force-controlled-gripper/position-control.jpg" preload="metadata" muted playsinline loop aria-label="Position control: the pointer on the motor shaft steps between set angles"></video><span class="label">Position control</span></div>
+      </div>
+      <figcaption>The velocity and position controllers running on the motor.</figcaption>
+    </figure>
+
+    <h2 id="cost-breakdown">Cost Breakdown</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Item</th><th class="num">Unit cost</th><th class="num">Quantity</th><th class="num">Cost</th></tr></thead>
+      <tbody>
+        <tr><td>PCB Components</td><td class="num">$9.30</td><td class="num">1</td><td class="num">$9.30</td></tr>
+        <tr><td>PCB</td><td class="num">$1.00</td><td class="num">1</td><td class="num">$1.00</td></tr>
+        <tr><td>JGB37-520 DC Motor</td><td class="num">$12.18</td><td class="num">1</td><td class="num">$12.18</td></tr>
+        <tr><td>100 mm Linear rail</td><td class="num">$6.00</td><td class="num">1</td><td class="num">$6.00</td></tr>
+        <tr><td>Carriage</td><td class="num">$4.00</td><td class="num">1</td><td class="num">$4.00</td></tr>
+        <tr><td>3D printed parts</td><td class="num">$12.00</td><td class="num">0.25</td><td class="num">$3.00</td></tr>
+        <tr><td>Flange Coupling</td><td class="num">$1.00</td><td class="num">1</td><td class="num">$1.00</td></tr>
+        <tr class="total"><td>Total</td><td></td><td></td><td class="num">$36.48</td></tr>
+      </tbody>
+    </table></div>
+    <p>The total came to $36.48. There’s still room to cut cost on the PCB. The MCU I chose was way too powerful and expensive (it cost $5.81) for this simple DC controller. ST released a new line, the STM32C5 series. They are quite powerful, but they are also very cheap; they cost about $2, so they’d be a good alternative for this project. I stuck with the G4 because I’d already used it in my stepper motor drivers, so I could reuse a lot of that code.</p>
+
+    <h2 id="conclusion">Conclusion</h2>
+    <p>In the end, we were able to successfully build a force-controlled gripper, and it worked better than I expected.</p>
+
+    <div class="tags"><span class="pill">DC motor control</span><span class="pill">Cascaded PI control</span><span class="pill">PCB design</span><span class="pill">STM32</span><span class="pill">Robotics</span></div>
+  </article>
+</div>
+
+<section class="gallery" aria-labelledby="gallery-h">
+  <div class="gallery-head"><h2 id="gallery-h">Gallery</h2><span class="label">2 photos</span></div>
+  <div class="gallery-grid">
+    <a href="../../assets/img/force-controlled-gripper/gallery/01.jpg"><img src="../../assets/img/force-controlled-gripper/gallery/01-sm.jpg" alt="Front view of the gripper on the robot arm, holding a potato chip" loading="lazy"></a>
+    <a href="../../assets/img/force-controlled-gripper/gallery/02.jpg"><img src="../../assets/img/force-controlled-gripper/gallery/02-sm.jpg" alt="The gripper on the end of the robot arm, holding a potato chip above a wooden table" loading="lazy"></a>
+  </div>
+</section>
+
+<section class="related" aria-labelledby="related-h">
+  <div class="related-head"><h2 id="related-h">More projects</h2><a href="../../#projects">All projects →</a></div>
+  <div class="grid">
+    <a class="card" href="../6dof-robot-arm/"><div class="thumb"><img src="../../assets/img/6dof-robot-arm/thumb.jpg" alt="" loading="lazy"></div><div><h3>6DOF Robot Arm</h3></div></a>
+    <a class="card" href="../foc-motor-driver/"><div class="thumb"><img src="../../assets/img/foc-motor-driver/thumb.jpg" alt="" loading="lazy"></div><div><h3>FOC Motor Driver</h3></div></a>
+    <a class="card" href="../stepper-motor-drivers/"><div class="thumb"><img src="../../assets/img/stepper-motor-drivers/thumb.jpg" alt="" loading="lazy"></div><div><h3>Stepper Motor Drivers</h3></div></a>
+  </div>
+</section>
+
+<footer class="foot" id="contact">
+  <span>© 2026 Steve Adinkrah Nketiah</span>
+  <a class="text" href="mailto:steve.adinkrah@gmail.com">steve.adinkrah@gmail.com</a>
+  <div class="socials">
+    <a class="icon li sm" href="https://www.linkedin.com/in/steve-nketiah-0841b5292/" target="_blank" rel="noopener" aria-label="LinkedIn"><img src="../../assets/img/linkedin.png" alt=""></a>
+    <a class="icon sm" href="mailto:steve.adinkrah@gmail.com" aria-label="Email"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm9 7.2L4.4 7H4v.8l8 5.4 8-5.4V7h-.4z"/></svg></a>
+  </div>
+</footer>
+
+<script src="../../assets/js/site.js"></script>
+</body>
+</html>

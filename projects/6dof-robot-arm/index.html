@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>6DOF Robot Arm · Steve Nketiah</title>
+<meta name="description" content="A six-axis robot arm built with my twin brother: custom robot controller, CAN FD motor controllers, kinematics, motion profiles and clock synchronization.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="../../assets/css/style.css">
+<link rel="icon" href="../../assets/img/favicon.svg" type="image/svg+xml">
+<style>
+  .scope .cell video { aspect-ratio: 2928 / 2160; object-fit: cover; }
+  .calc .cell img { aspect-ratio: 3 / 4; object-fit: cover; object-position: top; }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a class="mark" href="../../"><span class="chip">SN</span>Steve Nketiah</a>
+  <div class="links"><a href="../../#projects">Projects</a><a href="#contact">Contact</a></div>
+</nav>
+
+<div class="cover"><div class="thumb" style="--focus:50% 45%"><img src="../../assets/img/6dof-robot-arm/cover.jpg" alt="The 6DOF robot arm on a workbench with its robot controller mounted on the base"></div></div>
+
+<header class="head">
+  <div class="crumb"><a href="../../#projects">Projects</a> / Robotics</div>
+  <h1>6DOF Robot Arm</h1>
+  <p class="dek">A six-axis robot arm my twin brother and I built to learn engineering. I designed every PCB and wrote the firmware, from a Teensy on perfboard to a CAN FD bus with our own motor controllers.</p>
+  <div class="specs">
+    <div><span class="eyebrow">Role</span><b>Electrical &amp; firmware engineer</b></div>
+    <div><span class="eyebrow">Timeline</span><b>2023 – present</b></div>
+    <div><span class="eyebrow">Key parts</span><b>STM32H7R7 · STM32G431 · CAN FD</b></div>
+    <div><span class="eyebrow">Read</span><b data-readtime>12 min</b></div>
+  </div>
+</header>
+
+<div class="body">
+  <nav class="toc" aria-label="On this page"><span class="eyebrow">On this page</span></nav>
+
+  <article>
+    <h2 id="overview">Overview</h2>
+    <div class="side wide-media bleed">
+      <div class="text">
+        <p>Three years ago, my brother and I set out to build a 6 Degrees of Freedom (6DOF) robot arm to learn more about engineering. This was a huge step up from anything we had worked on before: at the time, the only engineering project I had under my belt was the <a href="../tortoise-tipper-3000/">Tortoise Tipper 3000</a> (a first-year engineering class project). Today, we have a working 6DOF robot arm with our own custom design, electronics, and firmware.</p>
+      </div>
+      <figure>
+        <video data-auto src="../../assets/video/6dof-robot-arm/demo.mp4" poster="../../assets/video/6dof-robot-arm/demo.jpg" preload="metadata" muted playsinline loop></video>
+        <figcaption>The arm following commanded positions and orientations.</figcaption>
+      </figure>
+    </div>
+
+    <h2 id="goals">Design Goals &amp; Constraints</h2>
+    <ul>
+      <li><strong>Engineering experience:</strong> Since this was one of our first personal projects, we just wanted to learn as much about engineering as we could.</li>
+      <li><strong>Custom Algorithms:</strong> We had to write all the algorithms (inverse kinematics, motion control, etc.) ourselves, with no copy-pasting of open-source code.</li>
+      <li><strong>Product Design:</strong> The robot must be aesthetically pleasing.</li>
+    </ul>
+
+    <h2 id="role">My Role</h2>
+    <p>My role was Electrical &amp; Firmware Engineer, so I designed all the PCBs and wrote the firmware that runs on them.</p>
+
+    <h2 id="evolution">Design Evolution</h2>
+
+    <h3 id="v1">V1</h3>
+    <p>We decided to go with a centralized architecture like most DIY robots: a main microcontroller (the robot controller) is responsible for both planning the path and generating the step pulses for each motor. That's a lot of responsibility for one microcontroller, so it has to be fast. For that reason, we went with the Teensy 4.1. It was the fastest microcontroller we could find that could be programmed using Arduino.</p>
+    <p>Since this is a 6DOF robot arm, we need six motors. We went with stepper motors because they're cheap. Unlike BLDC servos, they don't take a lot of work to get running. They work great in open-loop mode, so all we need is a stepper motor driver to get them moving. We used one NEMA 23 for Joint 2 and five NEMA 17s for the rest of the joints. For the stepper drivers, we chose the MKS SERVO42C (for NEMA 17) and the MKS SERVO57C (for NEMA 23). Both support closed-loop control, but we ran them in open-loop mode because closed-loop was unreliable for us.</p>
+    <p>Since we ran the steppers open loop, they don't know where they are on startup, so we needed a way to find a known starting position. For this, we used limit switches for homing.</p>
+    <figure>
+      <img src="../../assets/img/6dof-robot-arm/centralized-architecture.png" alt="Centralized architecture: power and a bundle of signal wires run from the robot controller to each of the six motors" loading="lazy">
+      <figcaption>V1's centralized architecture. Every motor has its own bundle of signal wires running back to the robot controller.</figcaption>
+    </figure>
+
+    <h3 id="v1-issues">V1 Issues</h3>
+    <ul>
+      <li>The first major issue was that the belt-driven NEMA 17 on Joint 3 couldn't provide enough torque to move the joint.</li>
+      <li>The second issue was with the NEMA 23 stepper motor driver: whenever we unplugged the Teensy from the computer, the motor would make erratic movements, which ended up destroying our limit switches.</li>
+      <li>The third issue was that we kept blowing up Teensy boards. Wiring mistakes cost us two of them, and at $40 each, that wasn't sustainable.</li>
+    </ul>
+    <figure>
+      <video data-auto src="../../assets/video/6dof-robot-arm/v1-joint-3.mp4" poster="../../assets/video/6dof-robot-arm/v1-joint-3.jpg" preload="metadata" muted playsinline loop></video>
+      <figcaption>V1's belt-driven Joint 3 giving out under load.</figcaption>
+    </figure>
+
+    <h3 id="v2">V2</h3>
+    <p>We kept the same centralized approach, but made some changes to fix the issues we ran into with V1:</p>
+    <ul>
+      <li>We upgraded Joint 3 from a NEMA 17 to a NEMA 23 and removed the belt so the motor drives the joint directly.</li>
+      <li>We replaced the MKS SERVO57C on Joint 2 with a DM542, and used a second DM542 for the new NEMA 23 on Joint 3.</li>
+      <li>We also swapped out the Teensy for an ESP32. Even though it isn't as fast, it is fast enough, and most importantly, it is significantly cheaper.</li>
+      <li>We added support for proximity sensors and used them on the high-torque joints for contactless homing, so a runaway joint can't crush a limit switch.</li>
+      <li>I designed my first PCB to replace our perfboard, which also got rid of a lot of the wiring issues from V1.</li>
+    </ul>
+    <figure>
+      <div class="row photo">
+        <div class="cell"><img src="../../assets/img/6dof-robot-arm/controller-v1.jpg" alt="V1 robot controller: a Teensy 4.1 on perfboard" loading="lazy"><span class="label">V1 · Teensy 4.1 on perfboard</span></div>
+        <div class="cell"><img src="../../assets/img/6dof-robot-arm/controller-v2.jpg" alt="V2 robot controller: an ESP32 on my first custom PCB" loading="lazy"><span class="label">V2 · ESP32 on my first PCB</span></div>
+      </div>
+      <figcaption>From perfboard to PCB.</figcaption>
+    </figure>
+    <figure>
+      <video controls preload="metadata" src="../../assets/video/6dof-robot-arm/v2.mp4" poster="../../assets/video/6dof-robot-arm/v2.jpg"></video>
+      <figcaption>V2 up and running.</figcaption>
+    </figure>
+
+    <h3 id="v3">V3</h3>
+    <p>At this point, the robot was working perfectly well, but we knew we could do better. The first major area to improve was the wiring. Because of the centralized architecture, a lot of wires were running to and from the robot controller. To fix this, we switched to using a CAN FD bus to control the stepper motors. This allows us to decouple step pulse generation from the robot controller: the robot controller is only in charge of planning paths, while the motor controllers handle stepping the motors and homing. Each motor now just needs power and a CAN FD connection instead of its own bundle of signal wires running back to the robot controller.</p>
+    <p>This meant we needed new motor controllers. We had two options: build our own or buy off-the-shelf CAN FD motor controllers. Since the goal of this project was to learn, we decided to build the whole system ourselves: robot controller and motor controllers.</p>
+    <figure>
+      <img src="../../assets/img/6dof-robot-arm/bus-architecture.png" alt="Bus architecture: the robot controller and six motors share one power line and one CAN FD bus" loading="lazy">
+      <figcaption>V3's bus architecture. Each motor controller only needs power and a CAN FD connection.</figcaption>
+    </figure>
+
+    <h4>Design Choices: Robot Controller PCB Design</h4>
+    <ul>
+      <li><strong>MCU: STM32H7R7.</strong> We picked it because it's fast, has an LTDC peripheral for driving the LCD, and isn't too expensive. The catch is that it only has 64 kB of flash and about 600 kB of RAM. The frame buffer for our LCD screen needs about 1.2 MB of RAM, and since we want to double-buffer, we need twice that. So we added 8 MB of external SDRAM. On top of that, 64 kB is nowhere near enough to store our application code, so I also added 8 MB of external flash.</li>
+      <li><strong>USB-to-serial interface:</strong> for sending commands to the robot from a computer.</li>
+      <li><strong>E-STOP button</strong> (optocoupler-isolated)</li>
+      <li><strong>LCD Screen:</strong> for a touchscreen interface on the robot</li>
+      <li><strong>CAN FD support</strong></li>
+      <li><strong>EEPROM</strong> for storing config data</li>
+    </ul>
+    <figure>
+      <img src="../../assets/img/6dof-robot-arm/controller-v3.jpg" alt="V3 robot controller PCB with the STM32H7R7" loading="lazy">
+      <figcaption>The V3 robot controller.</figcaption>
+    </figure>
+
+    <h4>Design Choices: Motor controllers</h4>
+    <p>I designed two motor controllers: one for the NEMA 23s and one for the NEMA 17s.</p>
+    <ul>
+      <li><strong>MCU: STM32G431.</strong> It's cheap, fast, and has a built-in CAN FD controller.</li>
+      <li><strong>Stepper motor driver chip:</strong>
+        <ul>
+          <li>NEMA 17: TMC2209 because it can handle up to 2 A RMS</li>
+          <li>NEMA 23: TMC5160 because it drives external FETs, so we could size them to handle the current requirements of the NEMA 23s (3 A)</li>
+        </ul>
+      </li>
+      <li><strong>Optocoupler circuitry:</strong> isolates the limit switch inputs used for homing</li>
+      <li><strong>Magnetic encoder:</strong> we included an A1333 encoder for closed-loop control, but haven't implemented it yet.</li>
+    </ul>
+    <p>More details on the <a href="../stepper-motor-drivers/">motor controller page</a>.</p>
+
+    <h4>Robot Controller Issues</h4>
+    <div class="side">
+      <div class="text">
+        <p>There was really only one issue with this revision: the LCD screen wasn't working. For controlling the LCD touchscreen, the STM32H7R7 has an LTDC peripheral. This peripheral fetches the frame buffer data (the image displayed on the screen) from RAM, which in our case was the external SDRAM, and sends it to the display. The problem was that it couldn't transfer the data fast enough: the LTDC kept setting its FIFO underrun flag when reading from the SDRAM.</p>
+      </div>
+      <figure>
+        <img src="../../assets/img/6dof-robot-arm/lcd-not-working.jpg" alt="V3 robot controller with its LCD touchscreen connected but blank" loading="lazy">
+        <figcaption>V3 with the LCD connected and blank.</figcaption>
+      </figure>
+    </div>
+    <p>At the time, I assumed the SDRAM was just too slow, so I switched to faster memory in the next revision. In hindsight, it was a firmware issue (skill issue on my part). ST's LTDC application note (AN4861) explains that if the frame buffer line width isn't aligned to the bus burst size, the LTDC splits its burst reads into single accesses, which kills bandwidth on high-latency memory like SDRAM. Setting the pitch correctly would likely have fixed it in firmware.</p>
+
+    <h3 id="v3-1">V3.1</h3>
+    <p>The goal of this revision was to get the touchscreen display actually working. We got around the FIFO underrun by switching to faster memory: HyperRAM. HyperRAM runs at 200 MHz DDR on an 8-bit bus, compared to the old SDRAM's 16-bit bus at 100 MHz. That's half the data lines for twice the peak throughput (400 MB/s vs. 200 MB/s). In hindsight, the alignment fix described above may have been enough on its own. The PCB design was quite challenging, since I had to length-match traces to keep the timing right and route them with controlled impedance.</p>
+    <p>I successfully got the touchscreen working, but I accidentally swapped the USB data lines going into the USB-to-serial converter. That meant I couldn't communicate with the computer, so I had to stick with V3 for robot development.</p>
+    <figure>
+      <div class="row photo">
+        <div class="cell"><img src="../../assets/img/6dof-robot-arm/controller-v3-1.jpg" alt="V3.1 robot controller PCB with HyperRAM" loading="lazy"><span class="label">V3.1 PCB</span></div>
+        <div class="cell"><img src="../../assets/img/6dof-robot-arm/lcd-working.jpg" alt="V3.1 robot controller driving the touchscreen, which shows the robot's logo" loading="lazy"><span class="label">The touchscreen working</span></div>
+      </div>
+      <figcaption>V3.1: HyperRAM in place of SDRAM, and the display finally running.</figcaption>
+    </figure>
+
+    <h3 id="v4">V4</h3>
+    <p>This revision fixed the issues from V3.1 and added some extra functionality to the robot controller:</p>
+    <ul>
+      <li>We added an STM32WB05KZV for Bluetooth connectivity. It communicates with the main STM32H7R7 controller via UART.</li>
+      <li>We switched from a USB-to-serial converter to a direct USB connection to the MCU, which increases communication speed. It also eliminates the USB-to-serial converter entirely, along with the routing mistake that broke V3.1.</li>
+      <li>We also added a buzzer for audio feedback.</li>
+      <li>We added an SD card for storing robot programs, and moved config data over to it from the EEPROM.</li>
+      <li>V4 has been assembled and is currently being tested.</li>
+    </ul>
+
+    <h2 id="gripper">Force-Controlled Gripper</h2>
+    <div class="side">
+      <div class="text">
+        <p>We also designed a force-controlled gripper. The idea is to control the grip force so it can handle both hard and delicate objects. It can pick up anything from something as fragile as a potato chip to something as solid as a 3D-printed cube.</p>
+        <p>Read more on the <a href="../force-controlled-gripper/">gripper page</a>.</p>
+      </div>
+      <figure>
+        <video data-auto src="../../assets/video/6dof-robot-arm/gripper.mp4" poster="../../assets/video/6dof-robot-arm/gripper.jpg" preload="metadata" muted playsinline loop></video>
+        <figcaption>Gripping a 3D-printed cube, then a potato chip.</figcaption>
+      </figure>
+    </div>
+
+    <h2 id="kinematics">Forward and Inverse Kinematics</h2>
+    <p>To figure out where the end effector is based on the joint angles, we use forward kinematics, specifically the Denavit-Hartenberg method. However, that alone isn't very useful for us. We need to be able to specify a position in space and have the robot move there. To do this, we use inverse kinematics (the geometric method). We break the robot into triangles and use trigonometry and vectors to solve for each joint angle needed to reach the target position and orientation.</p>
+    <figure class="calc">
+      <div class="row n3">
+        <div class="cell"><img src="../../assets/img/6dof-robot-arm/robot-frame.jpg" alt="Hand-drawn robot frame with the link lengths and joint axes" loading="lazy"><span class="label">Robot frame</span></div>
+        <div class="cell"><img src="../../assets/img/6dof-robot-arm/forward-kinematics.jpg" alt="Handwritten Denavit-Hartenberg table and transformation matrices" loading="lazy"><span class="label">Forward kinematics</span></div>
+        <div class="cell"><img src="../../assets/img/6dof-robot-arm/inverse-kinematics.jpg" alt="Handwritten geometric inverse kinematics derivation" loading="lazy"><span class="label">Inverse kinematics</span></div>
+      </div>
+      <figcaption>Our kinematics calculations. Click any page to read it full size.</figcaption>
+    </figure>
+
+    <h2 id="s-curve">S-Curve Velocity Profile</h2>
+    <p>To get the robot to follow whatever path we specify, we break the path into small segments and interpolate between them. To make sure the motion is smooth, we implemented an S-curve velocity profile. S-curves ramp acceleration up and down gradually instead of switching it instantly, which reduces mechanical stress and prevents jerky motion.</p>
+    <figure>
+      <img src="../../assets/img/6dof-robot-arm/s-curve-profile.png" alt="Plots of position, velocity, acceleration and jerk over time for the S-curve motion profile" loading="lazy">
+      <figcaption>Position, velocity, acceleration and jerk for one move. Acceleration ramps instead of stepping, so jerk stays bounded.</figcaption>
+    </figure>
+    <a class="download" href="../../assets/files/6dof-robot-arm/motion-profile-calculations.pdf" download><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 3h2v10.17l3.59-3.58L18 11l-6 6-6-6 1.41-1.41L11 13.17zM5 19h14v2H5z"/></svg>Download the calculations (PDF)</a>
+
+    <h2 id="sync">Motor Synchronization</h2>
+    <p>With the switch to CAN FD, the first thing we had to figure out was how to actually control the motors. This wasn't a problem with the original architecture, since a single MCU generated the step pulses for all six motors. With CAN FD, we can't just carry this over: the bus is too slow, with too much latency variation, to send individual step pulses to each motor. Instead, we send position commands and let the motor controllers handle step generation. This creates two major challenges: first, we have to make sure the motor controllers never run out of position commands before new ones arrive, and second, we have to make sure the clocks on all the nodes are synced. Each position command is tagged with the time it should execute, so if the clocks drift apart, the joints fall out of step with each other and the arm stops following the planned path.</p>
+    <p>The first issue is simple: we implemented a command queue on each motor controller, which the robot controller keeps topped up so it never runs dry. The second is more difficult, so we implemented our own version of the IEEE 1588 Precision Time Protocol (PTP) over the CAN FD bus. Our solution uses the CAN FD peripheral's hardware timestamping to sync the clocks and compensate for slight frequency differences between them.</p>
+    <p>Here's how it works:</p>
+    <ul>
+      <li>The robot controller broadcasts a sync message on the CAN FD bus</li>
+      <li>Motor controllers use hardware timestamping to record the Start of Frame (SOF) time (T2) with microsecond precision</li>
+      <li>The robot controller sends a follow-up message containing its timer value at the moment of SOF transmission (T1)</li>
+      <li>Each motor controller calculates the offset between its local clock and the robot controller's clock, then adjusts accordingly</li>
+      <li>Each motor controller also calculates a frequency multiplier to correct for the slight difference in clock speed.</li>
+    </ul>
+    <p>To test how well the two timers stay synchronized, I connected a GPIO pin on both the robot controller and a motor controller to an oscilloscope and toggled them at the same scheduled time. I tested four conditions, with a sync command sent every second where applicable. Below are the results.</p>
+    <figure class="wide scope">
+      <div class="row">
+        <div class="cell"><video data-auto src="../../assets/video/6dof-robot-arm/sync-no-correction.mp4" poster="../../assets/video/6dof-robot-arm/sync-no-correction.jpg" preload="metadata" muted playsinline loop></video><span class="label">Drift test: no correction</span></div>
+        <div class="cell"><video data-auto src="../../assets/video/6dof-robot-arm/sync-offset-only.mp4" poster="../../assets/video/6dof-robot-arm/sync-offset-only.jpg" preload="metadata" muted playsinline loop></video><span class="label">Offset correction only (1 s sync, no rate correction)</span></div>
+        <div class="cell"><video data-auto src="../../assets/video/6dof-robot-arm/sync-offset-rate.mp4" poster="../../assets/video/6dof-robot-arm/sync-offset-rate.jpg" preload="metadata" muted playsinline loop></video><span class="label">Offset + rate correction (1 s sync)</span></div>
+        <div class="cell"><video data-auto src="../../assets/video/6dof-robot-arm/sync-rate-only.mp4" poster="../../assets/video/6dof-robot-arm/sync-rate-only.jpg" preload="metadata" muted playsinline loop></video><span class="label">Rate correction drift test (one sync, no periodic sync)</span></div>
+      </div>
+      <figcaption>Both GPIOs toggled at the same scheduled time. The gap between the two edges is the clock error between the robot controller and the motor controller.</figcaption>
+    </figure>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Condition</th><th>Drift rate</th><th>Time error</th><th>Behavior</th></tr></thead>
+      <tbody>
+        <tr><td>No correction</td><td>16.5 ppm</td><td>195 µs after 11.9 s</td><td>Unbounded, linear</td></tr>
+        <tr><td>Offset only (1 s sync)</td><td>16.5 ppm between syncs</td><td>16.5 µs peak</td><td>Bounded sawtooth</td></tr>
+        <tr class="pick"><td>Offset + rate (1 s sync)</td><td>0.04 ppm</td><td>~1–2 µs observed</td><td>Bounded, quantization-limited</td></tr>
+        <tr><td>Rate only, one sync</td><td>0.04 ppm residual</td><td>9.5 µs after 256 s</td><td>Unbounded, ~444× slower</td></tr>
+      </tbody>
+    </table></div>
+    <p>Rate correction reduced the drift rate from 16.471 ppm to 0.0371 ppm, an improvement of roughly 444×. An independent cross-check using the raw T1 − T2 offset gave 16.448 ppm, agreeing with the rate estimator to within 0.14% and confirming it tracks the real crystal difference. The remaining ~1–2 µs is consistent with the quantization limit of two unsynchronized 1 MHz counters (up to ±1 µs combined) plus jitter from toggling the GPIOs in software using interrupts. Further improvement would need a faster timebase, and a hardware timer output to toggle the GPIO for the measurement, rather than a better estimator.</p>
+
+    <h2 id="serial">Robot Serial Interface</h2>
+    <p>The robot communicates with the host computer over a serial interface (UART via a USB-to-serial converter on V3, native USB on V4) that handles motion commands, configuration changes, and status reporting. It also streams real-time log output, which has been helpful during development and debugging.</p>
+    <figure>
+      <img src="../../assets/img/6dof-robot-arm/serial-interface.png" alt="Terminal showing the robot control interface: startup log, motor initialization and a homing sequence" loading="lazy">
+      <figcaption>The serial interface during startup and homing.</figcaption>
+    </figure>
+
+    <div class="tags"><span class="pill">PCB design</span><span class="pill">Firmware</span><span class="pill">CAN FD</span><span class="pill">STM32</span><span class="pill">Kinematics</span><span class="pill">Motion control</span></div>
+  </article>
+</div>
+
+<section class="gallery" aria-labelledby="gallery-h">
+  <div class="gallery-head"><h2 id="gallery-h">Gallery</h2><span class="label">The original V1 arm, 2023</span></div>
+  <div class="gallery-grid">
+    <a href="../../assets/img/6dof-robot-arm/gallery/01.jpg"><img src="../../assets/img/6dof-robot-arm/gallery/01-sm.jpg" alt="V1 robot arm" loading="lazy"></a>
+    <a href="../../assets/img/6dof-robot-arm/gallery/02.jpg"><img src="../../assets/img/6dof-robot-arm/gallery/02-sm.jpg" alt="Assembling a V1 arm link" loading="lazy"></a>
+    <a href="../../assets/img/6dof-robot-arm/gallery/03.jpg"><img src="../../assets/img/6dof-robot-arm/gallery/03-sm.jpg" alt="V1 robot arm" loading="lazy"></a>
+    <a href="../../assets/img/6dof-robot-arm/gallery/04.jpg"><img src="../../assets/img/6dof-robot-arm/gallery/04-sm.jpg" alt="Assembling the V1 arm" loading="lazy"></a>
+    <a href="../../assets/img/6dof-robot-arm/gallery/05.jpg"><img src="../../assets/img/6dof-robot-arm/gallery/05-sm.jpg" alt="V1 robot arm" loading="lazy"></a>
+    <a href="../../assets/img/6dof-robot-arm/gallery/06.jpg"><img src="../../assets/img/6dof-robot-arm/gallery/06-sm.jpg" alt="V1 robot arm" loading="lazy"></a>
+  </div>
+</section>
+
+<section class="related" aria-labelledby="related-h">
+  <div class="related-head"><h2 id="related-h">More projects</h2><a href="../../#projects">All projects →</a></div>
+  <div class="grid">
+    <a class="card" href="../stepper-motor-drivers/"><div class="thumb"><img src="../../assets/img/stepper-motor-drivers/thumb.jpg" alt="" loading="lazy"></div><div><h3>Stepper Motor Drivers</h3></div></a>
+    <a class="card" href="../force-controlled-gripper/"><div class="thumb"><img src="../../assets/img/force-controlled-gripper/thumb.jpg" alt="" loading="lazy"></div><div><h3>Force-Controlled Gripper</h3></div></a>
+    <a class="card" href="../foc-motor-driver/"><div class="thumb"><img src="../../assets/img/foc-motor-driver/thumb.jpg" alt="" loading="lazy"></div><div><h3>FOC Motor Driver</h3></div></a>
+  </div>
+</section>
+
+<footer class="foot" id="contact">
+  <span>© 2026 Steve Adinkrah Nketiah</span>
+  <a class="text" href="mailto:steve.adinkrah@gmail.com">steve.adinkrah@gmail.com</a>
+  <div class="socials">
+    <a class="icon li sm" href="https://www.linkedin.com/in/steve-nketiah-0841b5292/" target="_blank" rel="noopener" aria-label="LinkedIn"><img src="../../assets/img/linkedin.png" alt=""></a>
+    <a class="icon sm" href="mailto:steve.adinkrah@gmail.com" aria-label="Email"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm9 7.2L4.4 7H4v.8l8 5.4 8-5.4V7h-.4z"/></svg></a>
+  </div>
+</footer>
+
+<script src="../../assets/js/site.js"></script>
+</body>
+</html>

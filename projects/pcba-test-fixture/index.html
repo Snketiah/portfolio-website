@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PCBA Test Fixture · Steve Nketiah</title>
+<meta name="description" content="A bed-of-nails fixture built during my co-op at 3D Fortify that cut production board testing from 10 minutes to 30 seconds.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="../../assets/css/style.css">
+<link rel="icon" href="../../assets/img/favicon.svg" type="image/svg+xml">
+<style>
+  /* page-specific: keep the 4-photo row at two columns on phones; keep portrait videos from filling the screen */
+  @media (max-width: 540px) { .row.keep2 { --n: 2 !important; } }
+  @media (max-width: 720px) { .side figure.portrait { max-width: 260px; } }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a class="mark" href="../../"><span class="chip">SN</span>Steve Nketiah</a>
+  <div class="links"><a href="../../#projects">Projects</a><a href="#contact">Contact</a></div>
+</nav>
+
+<div class="cover"><div class="thumb" style="--focus:50% 50%"><img src="../../assets/img/pcba-test-fixture/cover.jpg" alt="Test fixture with a board clamped on the pogo pin tray; the LCD reads LOADCELL PCBA TEST FIXTURE"></div></div>
+
+<header class="head">
+  <div class="crumb"><a href="../../#projects">Projects</a> / Work</div>
+  <h1>PCBA Test Fixture</h1>
+  <p class="dek">A bed-of-nails fixture I designed during my first co-op to test a production board, cutting the testing time of each PCB from 10 minutes to just 30 seconds.</p>
+  <div class="specs">
+    <div><span class="eyebrow">Role</span><b>Electrical engineering co-op</b></div>
+    <div><span class="eyebrow">Timeline</span><b>2024</b></div>
+    <div><span class="eyebrow">Key parts</span><b>STM32F429 · ADS1246</b></div>
+    <div><span class="eyebrow">Read</span><b data-readtime>— min</b></div>
+  </div>
+</header>
+
+<div class="body">
+  <nav class="toc" aria-label="On this page"><span class="eyebrow">On this page</span></nav>
+
+  <article>
+    <h2 id="overview">Overview</h2>
+    <div class="side">
+      <div class="text">
+        <p>This project was developed during my first Co-op, where I designed a bed-of-nails fixture to test a production board. The goal was to significantly reduce the testing time of the PCBs from 10 minutes to just 30 seconds, improving efficiency and throughput in the manufacturing process.</p>
+      </div>
+      <figure class="portrait">
+        <video data-auto src="../../assets/video/pcba-test-fixture/loading.mp4" poster="../../assets/video/pcba-test-fixture/loading.jpg" preload="metadata" muted playsinline loop></video>
+        <figcaption>Loading a board and clamping it onto the pogo pins.</figcaption>
+      </figure>
+    </div>
+
+    <h2 id="requirements">Requirements</h2>
+    <ul>
+      <li>PCBA to be placed on a jig that contains test probes for all circuits to check</li>
+      <li>Test should be automated (or able to scale to automation)</li>
+      <li>Things to check:
+        <ul>
+          <li>Confirm all power rails (voltage measurement of some sort), all referenced to GND
+            <ul>
+              <li>24V_IN</li>
+              <li>5V0</li>
+              <li>+12V</li>
+              <li>12V</li>
+              <li>3V3</li>
+              <li>4V7</li>
+              <li>2V048</li>
+              <li>Bridge+</li>
+              <li>Bridge-</li>
+            </ul>
+          </li>
+          <li>Apply a simulated load to act as load cell arm
+            <ul>
+              <li>Zero load</li>
+              <li>Some expected amount of force</li>
+            </ul>
+          </li>
+          <li>Read load cell data over SPI
+            <ul>
+              <li>Need to convert from single-ended (SE) SPI to differential</li>
+              <li>Same for other ADS1246 signals</li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+    </ul>
+
+    <h2 id="pcb">PCB</h2>
+    <p>The brain of this PCB is the STM32F429VET6. It is responsible for taking all the measurements and communicating with the UUT. The board also included high-precision op-amps to buffer and step down the voltage. Since the Unit Under Test transmits and receives the SPI data as differential signals, there were differential to single-ended and single-ended to differential ICs for communication. A USB-UART IC was also included for serial communication.</p>
+    <figure>
+      <img src="../../assets/img/pcba-test-fixture/pcb.jpg" alt="Assembled green test fixture PCB with the STM32F429 in the centre and connectors around the edges" loading="lazy">
+      <figcaption>The test fixture PCB.</figcaption>
+    </figure>
+
+    <h2 id="firmware">Firmware</h2>
+    <div class="side">
+      <div class="text">
+        <p>STM32CubeIDE was used for configuring and programming the microcontroller, with the code written in C and organized as a state machine. GPIO external interrupts were used to facilitate state transitions. Additionally, the driver for the I2C display was custom-built from the ground up.</p>
+      </div>
+      <figure class="portrait">
+        <video data-auto src="../../assets/video/pcba-test-fixture/test-sequence.mp4" poster="../../assets/video/pcba-test-fixture/test-sequence.jpg" preload="metadata" muted playsinline loop></video>
+        <figcaption>Stepping through the tests with the Next button: rail voltages, current, then the load simulation.</figcaption>
+      </figure>
+    </div>
+
+    <h2 id="mechanical">Mechanical</h2>
+    <p>The test jig was adapted from a PCB test fixture sourced from AliExpress, but required several modifications to meet our specific needs. A custom PCB was also designed, incorporating pogo pins to make contact with pads on the underside of the UUT for voltage measurement and communication.</p>
+    <figure>
+      <div class="row n4 keep2" style="--ar:3/4">
+        <div class="cell"><img src="../../assets/img/pcba-test-fixture/fixture-0553.jpg" alt="The off-the-shelf fixture before modification" loading="lazy" data-caption="The fixture before modification."></div>
+        <div class="cell"><img src="../../assets/img/pcba-test-fixture/fixture-1245.jpg" alt="Fixture partly assembled, with the front panel cut-outs" loading="lazy" data-caption="Partly assembled, with the front panel cut-outs."></div>
+        <div class="cell"><img src="../../assets/img/pcba-test-fixture/fixture-1589.jpg" alt="Finished fixture with a board loaded; LCD reads SELECT MODE" loading="lazy" data-caption="Finished fixture with a board loaded."></div>
+        <div class="cell"><img src="../../assets/img/pcba-test-fixture/fixture-1604.jpg" alt="Finished fixture seen from the back" loading="lazy" data-caption="Finished fixture, back."></div>
+      </div>
+      <figcaption>From the off-the-shelf jig to the finished fixture.</figcaption>
+    </figure>
+    <figure>
+      <div class="row">
+        <div class="cell"><img src="../../assets/img/pcba-test-fixture/labels-front.jpg" alt="Front of the fixture labelled: back button, next button, power button, USB connector" loading="lazy" data-caption="Front: back, next and power buttons, USB connector."></div>
+        <div class="cell"><img src="../../assets/img/pcba-test-fixture/labels-parts.jpg" alt="Fixture labelled: compressor, load cell tray, pogo pin tray, LCD face plate, USB plate" loading="lazy" data-caption="Compressor, load cell tray, pogo pin tray, LCD face plate and USB plate."></div>
+      </div>
+      <figcaption>Controls and main parts of the fixture.</figcaption>
+    </figure>
+
+    <div class="tags"><span class="pill">Test engineering</span><span class="pill">PCB design</span><span class="pill">STM32</span><span class="pill">Firmware</span></div>
+  </article>
+</div>
+
+<section class="gallery" aria-labelledby="gallery-h">
+  <div class="gallery-head"><h2 id="gallery-h">Gallery</h2><span class="label">11 photos</span></div>
+  <div class="gallery-grid">
+    <a href="../../assets/img/pcba-test-fixture/gallery/01.jpg" data-caption="Bench prototype of the display panel: Click next to start test."><img src="../../assets/img/pcba-test-fixture/gallery/01-sm.jpg" alt="Bench prototype of the LCD panel, wired up on the bench" loading="lazy"></a>
+    <a href="../../assets/img/pcba-test-fixture/gallery/02.jpg" data-caption="Bench prototype measuring voltage and current."><img src="../../assets/img/pcba-test-fixture/gallery/02-sm.jpg" alt="Bench prototype of the LCD panel showing a voltage and current measurement" loading="lazy"></a>
+    <a href="../../assets/img/pcba-test-fixture/gallery/03.jpg" data-caption="Wiring inside the fixture base."><img src="../../assets/img/pcba-test-fixture/gallery/03-sm.jpg" alt="Fixture base opened up, showing the PCB and wiring" loading="lazy"></a>
+    <a href="../../assets/img/pcba-test-fixture/gallery/04.jpg" data-caption="Fixture during assembly."><img src="../../assets/img/pcba-test-fixture/gallery/04-sm.jpg" alt="Fixture during assembly with the LCD panel fitted" loading="lazy"></a>
+    <a href="../../assets/img/pcba-test-fixture/gallery/05.jpg" data-caption="Test PCB."><img src="../../assets/img/pcba-test-fixture/gallery/05-sm.jpg" alt="Black test PCB with connectors and a twisted-pair cable" loading="lazy"></a>
+    <a href="../../assets/img/pcba-test-fixture/gallery/06.jpg" data-caption="Pogo pin plate, top."><img src="../../assets/img/pcba-test-fixture/gallery/06-sm.jpg" alt="Top of the pogo pin plate" loading="lazy"></a>
+    <a href="../../assets/img/pcba-test-fixture/gallery/07.jpg" data-caption="Pogo pin plate."><img src="../../assets/img/pcba-test-fixture/gallery/07-sm.jpg" alt="Pogo pin plate on the bench" loading="lazy"></a>
+    <a href="../../assets/img/pcba-test-fixture/gallery/08.jpg" data-caption="Pogo pin plate, bottom, with its connectors."><img src="../../assets/img/pcba-test-fixture/gallery/08-sm.jpg" alt="Bottom of the pogo pin plate with connectors" loading="lazy"></a>
+    <a href="../../assets/img/pcba-test-fixture/gallery/09.jpg" data-caption="Pogo pin tray fitted in the fixture."><img src="../../assets/img/pcba-test-fixture/gallery/09-sm.jpg" alt="Pogo pin tray fitted in the fixture under the press" loading="lazy"></a>
+    <a href="../../assets/img/pcba-test-fixture/labels-back.jpg" data-caption="Back of the fixture, with the back plate labelled."><img src="../../assets/img/pcba-test-fixture/labels-back.jpg" alt="Back of the fixture with the back plate labelled" loading="lazy"></a>
+    <a href="../../assets/img/pcba-test-fixture/gallery/10.jpg" data-caption="Early whiteboard sketch of the test circuit."><img src="../../assets/img/pcba-test-fixture/gallery/10-sm.jpg" alt="Whiteboard sketch of voltage rails, MCU and pogo pin connections" loading="lazy"></a>
+  </div>
+</section>
+
+<section class="related" aria-labelledby="related-h">
+  <div class="related-head"><h2 id="related-h">More projects</h2><a href="../../#projects">All projects →</a></div>
+  <div class="grid">
+    <a class="card" href="../ryder-bike-computer/"><div class="thumb"><img src="../../assets/img/ryder-bike-computer/thumb.jpg" alt="" loading="lazy"></div><div><h3>Ryder Bike Computer</h3></div></a>
+    <a class="card" href="../reflow-oven/"><div class="thumb"><img src="../../assets/img/reflow-oven/thumb.jpg" alt="" loading="lazy"></div><div><h3>Reflow Oven</h3></div></a>
+    <a class="card" href="../stepper-motor-drivers/"><div class="thumb"><img src="../../assets/img/stepper-motor-drivers/thumb.jpg" alt="" loading="lazy"></div><div><h3>Stepper Motor Drivers</h3></div></a>
+  </div>
+</section>
+
+<footer class="foot" id="contact">
+  <span>© 2026 Steve Adinkrah Nketiah</span>
+  <a class="text" href="mailto:steve.adinkrah@gmail.com">steve.adinkrah@gmail.com</a>
+  <div class="socials">
+    <a class="icon li sm" href="https://www.linkedin.com/in/steve-nketiah-0841b5292/" target="_blank" rel="noopener" aria-label="LinkedIn"><img src="../../assets/img/linkedin.png" alt=""></a>
+    <a class="icon sm" href="mailto:steve.adinkrah@gmail.com" aria-label="Email"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm9 7.2L4.4 7H4v.8l8 5.4 8-5.4V7h-.4z"/></svg></a>
+  </div>
+</footer>
+
+<script src="../../assets/js/site.js"></script>
+</body>
+</html>

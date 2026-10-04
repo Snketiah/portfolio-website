@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Power Distribution Board · Steve Nketiah</title>
+<meta name="description" content="A 60 V / 30 A power distribution board with precharge, bus voltage and current measurement, and a comparator-based brake chopper.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="../../assets/css/style.css">
+<link rel="icon" href="../../assets/img/favicon.svg" type="image/svg+xml">
+<!-- ONLY on pages with math: KaTeX (renders formulas in the LaTeX font) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.querySelector('article'),{delimiters:[{left:'$$',right:'$$',display:true},{left:'\\(',right:'\\)',display:false}]})"></script>
+<!-- /KaTeX -->
+<style>
+  /* colour swatch for the simulation trace names */
+  .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 8px; vertical-align: 0; }
+  .eqs { margin: 0 0 18px; padding-left: 22px; }
+  .eqs li { margin-bottom: 10px; }
+  .eqs .math { margin: 8px 0 4px; }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a class="mark" href="../../"><span class="chip">SN</span>Steve Nketiah</a>
+  <div class="links"><a href="../../#projects">Projects</a><a href="#contact">Contact</a></div>
+</nav>
+
+<!-- Cover photo. --focus moves the crop point (x% y%). -->
+<div class="cover"><div class="thumb" style="--focus:50% 50%"><img src="../../assets/img/power-distribution-board/cover.jpg" alt="3D render of the power distribution board with eight bulk capacitors and power connectors on both ends"></div></div>
+
+<header class="head">
+  <div class="crumb"><a href="../../#projects">Projects</a> / Power</div>
+  <h1>Power Distribution Board with Integrated Brake Chopper</h1>
+  <p class="dek">This project started off as a brake chopper for my FOC board to prevent it from destroying my power supply. It has now turned into a power distribution board capable of powering three boards.</p>
+  <div class="specs">
+    <div><span class="eyebrow">Role</span><b>Hardware design</b></div>
+    <div><span class="eyebrow">Timeline</span><b>2026 · in progress</b></div>
+    <div><span class="eyebrow">Key parts</span><b>TLV1805 · INA240 · STM32</b></div>
+    <div><span class="eyebrow">Read</span><b data-readtime>— min</b></div>
+  </div>
+</header>
+
+<div class="body">
+  <nav class="toc" aria-label="On this page"><span class="eyebrow">On this page</span></nav>
+
+  <article>
+    <h2 id="overview">Overview</h2>
+    <div class="side wide-media bleed">
+      <div class="text">
+        <p>This project started off as a brake chopper for my FOC board to prevent it from destroying my power supply. It has now turned into a power distribution board capable of powering three boards, and I plan on using it in future robotics projects.</p>
+      </div>
+      <figure>
+        <img src="../../assets/img/power-distribution-board/pcb-render.jpg" alt="3D render of the power distribution board with a large connector on the left, eight bulk capacitors in the middle and three connectors plus a two-way screw terminal on the right" loading="lazy">
+        <figcaption>PCB render.</figcaption>
+      </figure>
+    </div>
+
+    <h2 id="goals">Design goals</h2>
+    <ul>
+      <li>Handle 60 V / 30 A</li>
+      <li>Measure bus voltage and current</li>
+      <li>Include a brake chopper</li>
+    </ul>
+
+    <h2 id="precharge">Precharge circuitry</h2>
+    <p>A high-side MOSFET limits inrush into the bus. The gate driver sources a constant ~60 µA into the gate, which has a capacitor (\(C_{dv/dt}\)) to ground, so the bus rises at a fixed rate of \(I_{\mathrm{gate}} / C_{dv/dt}\) regardless of bus voltage or load. During this ramp the MOSFET operates in its linear region with a high \(V_{DS}\), which would put a standard switching MOSFET outside its safe operating area, so I selected a MOSFET rated for linear-mode operation (wide SOA). The simulations below (55 V input, 2.8 mF bus capacitance, 3 W logic load turning on at 9 V) show the effect of \(C_{dv/dt}\). I chose 470 nF: peak inrush is ~0.67 A, the MOSFET peaks at ~32 W for a fraction of a second (~5.5 J total), and startup takes ~0.46 s.</p>
+
+    <figure class="wide">
+      <img src="../../assets/img/power-distribution-board/precharge-schematic.jpg" alt="LTspice schematic of the precharge circuit: 55 V source, MOSFET M1 with a 12 V zener from gate to source, 60 µA gate current source with 1 kΩ and Cdvdt to ground, and the bus capacitance, a 4.7 kΩ resistor and the logic load on the output" loading="lazy">
+      <figcaption>LTspice schematic of the precharge circuit. C<sub>dvdt</sub> is stepped through 100 nF, 270 nF, 470 nF and 1 µF.</figcaption>
+    </figure>
+
+    <p class="table-note" style="margin:30px 0 -18px">Simulation results. Traces: <span class="swatch" style="background:#00c000"></span>100 nF <span class="swatch" style="background:#0000ff;margin-left:6px"></span>270 nF <span class="swatch" style="background:#ff0000;margin-left:6px"></span>470 nF <span class="swatch" style="background:#00b0b0;margin-left:6px"></span>1 µF</p>
+    <figure>
+      <img src="../../assets/img/power-distribution-board/sim-vout.png" alt="Simulated bus voltage V(out) ramping from 0 to 55 V; the ramp gets slower as Cdvdt increases" loading="lazy">
+      <figcaption>Bus voltage, V(out). A larger C<sub>dvdt</sub> gives a slower, linear ramp.</figcaption>
+    </figure>
+    <figure>
+      <img src="../../assets/img/power-distribution-board/sim-isupply.png" alt="Simulated supply current I(V1) for each Cdvdt; peak inrush falls from about 2 A at 100 nF to about 0.5 A at 1 µF" loading="lazy">
+      <figcaption>Supply current, I(V1). It is negative because LTspice measures current into the source.</figcaption>
+    </figure>
+    <figure>
+      <img src="../../assets/img/power-distribution-board/sim-pfet.png" alt="Simulated power dissipated in the MOSFET for each Cdvdt; peak falls from about 90 W at 100 nF to about 23 W at 1 µF" loading="lazy">
+      <figcaption>Power dissipated in the precharge MOSFET.</figcaption>
+    </figure>
+
+    <h3 id="result-summary">Result summary</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Trace</th><th class="num">C<sub>dvdt</sub></th><th class="num">Peak supply current</th><th class="num">Peak MOSFET power</th><th class="num">Charge time</th></tr></thead>
+      <tbody>
+        <tr><td><span class="swatch" style="background:#00c000"></span>Green</td><td class="num">100 nF</td><td class="num">~2.0 A</td><td class="num">~90 W</td><td class="num">~0.10 s</td></tr>
+        <tr><td><span class="swatch" style="background:#0000ff"></span>Blue</td><td class="num">270 nF</td><td class="num">~0.93 A</td><td class="num">~42 W</td><td class="num">~0.27 s</td></tr>
+        <tr class="pick"><td><span class="swatch" style="background:#ff0000"></span>Red</td><td class="num">470 nF</td><td class="num">~0.67 A</td><td class="num">~32 W</td><td class="num">~0.46 s</td></tr>
+        <tr><td><span class="swatch" style="background:#00b0b0"></span>Cyan</td><td class="num">1 µF</td><td class="num">~0.48 A</td><td class="num">~23 W</td><td class="num">~0.98 s</td></tr>
+      </tbody>
+    </table></div>
+
+    <h2 id="brake-chopper">Brake chopper circuitry</h2>
+    <p>The brake chopper is based on a comparator. A divided-down copy of \(V_{\mathrm{BUS}}\) is fed into the non-inverting input, and a reference voltage generated by the MCU is fed into the inverting input. When \(V_{\mathrm{BUS}}\) exceeds the set voltage, the comparator output goes high and turns on the chopping MOSFET. This dumps the excess energy into the brake resistor, pulling the bus voltage back down. I added hysteresis to the comparator, so once the chopper turns on it stays on until the bus falls below a lower threshold. This prevents it from chattering around the set point. Below are my calculations for the divider and hysteresis resistors.</p>
+
+    <figure class="tex-fig">
+      <img src="../../assets/img/power-distribution-board/comparator.svg" alt="Comparator circuit: V_BUS divided by R_top and R_bot into the non-inverting input of a TLV1805, V_REF from the MCU on the inverting input, and R_fb from the output back to the non-inverting input for hysteresis" style="width:520px">
+      <figcaption>Non-inverting comparator with resistive hysteresis (TLV1805, push-pull, \(V_{CC} = 12\,\mathrm{V}\)). Output high turns the brake MOSFET on.</figcaption>
+    </figure>
+
+    <h3 id="threshold">Threshold derivation</h3>
+    <p>The comparator switches when \(V_+ = V_{\mathrm{REF}}\). KCL at \(V_+\):</p>
+    <div class="math">$$\frac{V_{\mathrm{BUS}} - V_{\mathrm{REF}}}{R_{\mathrm{top}}} + \frac{V_{\mathrm{OUT}} - V_{\mathrm{REF}}}{R_{\mathrm{fb}}} = \frac{V_{\mathrm{REF}}}{R_{\mathrm{bot}}}$$</div>
+    <div class="math">$$\Longrightarrow\quad V_{\mathrm{BUS}} = V_{\mathrm{REF}}\underbrace{\left(1 + \frac{R_{\mathrm{top}}}{R_{\mathrm{bot}}} + \frac{R_{\mathrm{top}}}{R_{\mathrm{fb}}}\right)}_{K} \;-\; V_{\mathrm{OUT}}\,\frac{R_{\mathrm{top}}}{R_{\mathrm{fb}}}$$</div>
+
+    <h3 id="thresholds">Chop and release thresholds</h3>
+    <div class="math">$$\begin{aligned}
+      \textbf{Chop}\ (\text{bus rising, } V_{\mathrm{OUT}} = 0):&\quad V_{\mathrm{CHOP}} = K\, V_{\mathrm{REF}} \\[2pt]
+      \textbf{Release}\ (\text{bus falling, } V_{\mathrm{OUT}} = V_{CC}):&\quad V_{\mathrm{REL}} = V_{\mathrm{CHOP}} - V_{\mathrm{HYS}} \\[2pt]
+      \textbf{Hysteresis}:&\quad V_{\mathrm{HYS}} = V_{CC}\,\frac{R_{\mathrm{top}}}{R_{\mathrm{fb}}}
+    \end{aligned}$$</div>
+
+    <h3 id="components">Component selection</h3>
+    <p>Target \(V_{\mathrm{HYS}} = 1.2\,\mathrm{V}\) with \(V_{CC} = 12\,\mathrm{V}\).</p>
+    <ol class="eqs">
+      <li><strong>Feedback ratio.</strong>
+        <div class="math">$$\frac{R_{\mathrm{top}}}{R_{\mathrm{fb}}} = \frac{1.2\,\mathrm{V}}{12\,\mathrm{V}} = 0.1 \;\Rightarrow\; R_{\mathrm{top}} = 100\,\mathrm{k\Omega},\;\; R_{\mathrm{fb}} = 1\,\mathrm{M\Omega}$$</div></li>
+      <li><strong>Divider ratio.</strong> For \(V_{\mathrm{CHOP}} = 36\,\mathrm{V}\) at mid-scale \(V_{\mathrm{REF}} = 1.65\,\mathrm{V}\):
+        <div class="math">$$\frac{36}{1.65} = 1 + \frac{100\,\mathrm{k\Omega}}{R_{\mathrm{bot}}} + 0.1 \;\Rightarrow\; \frac{100\,\mathrm{k\Omega}}{R_{\mathrm{bot}}} = 20.718 \;\Rightarrow\; R_{\mathrm{bot,ideal}} = 4.83\,\mathrm{k\Omega}$$</div></li>
+      <li><strong>Standard value.</strong> Choosing E24 \(R_{\mathrm{bot}} = 4.7\,\mathrm{k\Omega}\):
+        <div class="math">$$K = 1 + \frac{100\,\mathrm{k\Omega}}{4.7\,\mathrm{k\Omega}} + \frac{100\,\mathrm{k\Omega}}{1\,\mathrm{M\Omega}} = 1 + 21.277 + 0.1 = \mathbf{22.377}$$</div></li>
+    </ol>
+
+    <h3 id="design-equations">Design equations</h3>
+    <div class="math">$$V_{\mathrm{CHOP}} = 22.377\, V_{\mathrm{REF}} \qquad V_{\mathrm{REF}} = \frac{V_{\mathrm{CHOP}}}{22.377} \qquad V_{\mathrm{REL}} = V_{\mathrm{CHOP}} - 1.2\,\mathrm{V}$$</div>
+
+    <h3 id="reference">Reference voltage</h3>
+    <p>Since the MCU I chose doesn’t have a DAC, I generate a PWM signal using a timer and filter it with a first-order low-pass filter. I chose R = 10 kΩ and C = 4.7 µF. This gives a cutoff frequency of 3.39 Hz and a time constant of 47 ms (about 0.24 s to settle), which balances settling time against ripple on the threshold.</p>
+    <figure class="tex-fig">
+      <img src="../../assets/img/power-distribution-board/rcfilter.svg" alt="RC low-pass filter: PWM from the MCU timer through a 10 kΩ resistor to the V_REF node, with a 4.7 µF capacitor to ground" style="width:380px">
+    </figure>
+    <div class="math">$$f_c = \frac{1}{2\pi RC} = \frac{1}{2\pi\,(10\,\mathrm{k\Omega})(4.7\,\mu\mathrm{F})} = 3.39\,\mathrm{Hz}, \qquad \tau = RC = 47\,\mathrm{ms}$$</div>
+    <p><strong>Ripple on the chopping voltage.</strong> With a PWM period much shorter than \(\tau\), the peak-to-peak ripple on \(V_{\mathrm{REF}}\) at duty \(D\) is approximately</p>
+    <div class="math">$$\Delta V_{\mathrm{REF}} \approx \frac{V_{DD}\, D(1-D)}{f_{\mathrm{PWM}}\,\tau} \;\le\; \frac{V_{DD}}{4\, f_{\mathrm{PWM}}\,\tau}$$</div>
+    <p>and the divider multiplies it by \(K\) at the bus:</p>
+    <div class="math">$$\Delta V_{\mathrm{CHOP}} = K\,\Delta V_{\mathrm{REF}} \;\le\; \frac{22.377 \times 3.3\,\mathrm{V}}{4\, f_{\mathrm{PWM}} \times 47\,\mathrm{ms}} \approx \frac{393\,\mathrm{V \cdot Hz}}{f_{\mathrm{PWM}}}$$</div>
+
+    <h3 id="calibration">Calibration</h3>
+    <p>Since I only have 1% resistors, the threshold can be off by about ±1.6 V. To fix this, I plan on calibrating the chopper threshold with a multimeter and storing the calibration values in code. Here is how the calibration works:</p>
+    <ol>
+      <li>Set CCR = 2400 (ARR = 2399, so 100% duty and \(V_{\mathrm{REF}} = V_{DD}\)). This puts \(V_{\mathrm{CHOP}}\) at about 74 V, so the chopper stays off during calibration.</li>
+      <li>Apply a known bus voltage \(V_{\mathrm{cal}}\), for example 48 V, read from the bench supply or a DMM.</li>
+      <li>Average 16–64 ADC samples of \(V_+\) to get \(\mathrm{code_{cal}}\).</li>
+      <li>Store \(V_{\mathrm{cal}}\) and \(\mathrm{code_{cal}}\) in flash.</li>
+    </ol>
+    <p>Then set the threshold with:</p>
+    <div class="math">$$\mathrm{CCR} = \frac{V_{\mathrm{CHOP}} \cdot \mathrm{code_{cal}} \cdot (\mathrm{ARR} + 1)}{V_{\mathrm{cal}} \cdot 4095}$$</div>
+    <p>Because the ADC reads the same node the comparator sees, and both the ADC and the PWM reference \(V_{DD}\), the divider tolerance and \(V_{DD}\) cancel out of this formula.</p>
+
+    <h2 id="measurement" data-toc="Voltage &amp; current">Voltage and current measurement</h2>
+    <p>To measure the bus voltage, I use a separate voltage divider to step down \(V_{\mathrm{BUS}}\) so it can be fed into the STM32 ADC.</p>
+    <p>For the current measurement, I use a 2 mΩ shunt resistor with an INA240A1D current-sense amplifier, whose output is read by the STM32 ADC.</p>
+
+    <h2 id="verification">Verification</h2>
+    <div class="note"><p>Hardware verification is in progress. I will add the results here once I verify them on the board.</p></div>
+
+    <div class="tags"><span class="pill">PCB design</span><span class="pill">Power electronics</span><span class="pill">LTspice</span><span class="pill">Analog design</span><span class="pill">STM32</span></div>
+  </article>
+</div>
+
+<!-- Three related projects (thumbs live at assets/img/<slug>/thumb.jpg) -->
+<section class="related" aria-labelledby="related-h">
+  <div class="related-head"><h2 id="related-h">More projects</h2><a href="../../#projects">All projects →</a></div>
+  <div class="grid">
+    <a class="card" href="../foc-motor-driver/"><div class="thumb"><img src="../../assets/img/foc-motor-driver/thumb.jpg" alt="" loading="lazy"></div><div><h3>FOC Motor Driver</h3></div></a>
+    <a class="card" href="../6dof-robot-arm/"><div class="thumb"><img src="../../assets/img/6dof-robot-arm/thumb.jpg" alt="" loading="lazy"></div><div><h3>6DOF Robot Arm</h3></div></a>
+    <a class="card" href="../stepper-motor-drivers/"><div class="thumb"><img src="../../assets/img/stepper-motor-drivers/thumb.jpg" alt="" loading="lazy"></div><div><h3>Stepper Motor Drivers</h3></div></a>
+  </div>
+</section>
+
+<footer class="foot" id="contact">
+  <span>© 2026 Steve Adinkrah Nketiah</span>
+  <a class="text" href="mailto:steve.adinkrah@gmail.com">steve.adinkrah@gmail.com</a>
+  <div class="socials">
+    <a class="icon li sm" href="https://www.linkedin.com/in/steve-nketiah-0841b5292/" target="_blank" rel="noopener" aria-label="LinkedIn"><img src="../../assets/img/linkedin.png" alt=""></a>
+    <a class="icon sm" href="mailto:steve.adinkrah@gmail.com" aria-label="Email"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm9 7.2L4.4 7H4v.8l8 5.4 8-5.4V7h-.4z"/></svg></a>
+  </div>
+</footer>
+
+<script src="../../assets/js/site.js"></script>
+</body>
+</html>
