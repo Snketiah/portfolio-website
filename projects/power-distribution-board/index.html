@@ -68,6 +68,13 @@
       <li>Include a brake chopper</li>
     </ul>
 
+    <h2 id="block-diagram">Block diagram</h2>
+    <figure>
+      <img src="../../assets/img/power-distribution-board/block-diagram.png" alt="Brake chopper block diagram: VIN goes through the precharge circuitry to VOUT. The bus also feeds one input of a comparator. The MCU output goes through a low-pass filter into the other comparator input, and the comparator output drives the MOSFET and brake resistor" loading="lazy">
+      <figcaption>Block diagram of the precharge and brake chopper.</figcaption>
+    </figure>
+    <p>The input goes through the precharge circuitry before it reaches the output, so the bus capacitors charge up slowly instead of pulling a large inrush current. The comparator compares the bus voltage with a reference voltage set by the MCU. The MCU makes this reference with a PWM signal and a low-pass filter. When the bus goes above the set voltage, the comparator turns on the MOSFET, which dumps the extra energy into the brake resistor.</p>
+
     <h2 id="precharge">Precharge circuitry</h2>
     <p>A high-side MOSFET limits inrush into the bus. The gate driver sources a constant ~60 µA into the gate, which has a capacitor (\(C_{dv/dt}\)) to ground, so the bus rises at a fixed rate of \(I_{\mathrm{gate}} / C_{dv/dt}\) regardless of bus voltage or load. During this ramp the MOSFET operates in its linear region with a high \(V_{DS}\), which would put a standard switching MOSFET outside its safe operating area, so I selected a MOSFET rated for linear-mode operation (wide SOA). The simulations below (55 V input, 2.8 mF bus capacitance, 3 W logic load turning on at 9 V) show the effect of \(C_{dv/dt}\). I chose 470 nF: peak inrush is ~0.67 A, the MOSFET peaks at ~32 W for a fraction of a second (~5.5 J total), and startup takes ~0.46 s.</p>
 

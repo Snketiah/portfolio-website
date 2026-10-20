@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dual Active Bridge Converter · Steve Nketiah</title>
+<meta name="description" content="A 1.4 kW dual active bridge with a boost PFC front end. It runs from 120–240 V mains and delivers 24–60 V at up to 30 A.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261004e">
+<link rel="icon" href="../../assets/img/favicon.svg" type="image/svg+xml">
+<!-- ONLY on pages with math: KaTeX (renders formulas in the LaTeX font) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.querySelector('article'),{delimiters:[{left:'$$',right:'$$',display:true},{left:'\\(',right:'\\)',display:false}]})"></script>
+<!-- /KaTeX -->
+<style>
+  /* wide schematic scrolls sideways on phones instead of shrinking to unreadable text */
+  @media (max-width: 540px) {
+    .tex-fig.mscroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .tex-fig.mscroll img { max-width: none; width: var(--mw); margin: 0; }
+  }
+  /* simulation waveform picker */
+  .sim-pick { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 0 0 14px; }
+  .sim-pick .grp { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .sim-pick .eyebrow { margin-right: 4px; }
+  .sim-pick .pill { padding: 7px 11px; font-size: 13px; }
+  figure.sim img { background: #fcfcfb; }
+  article td { white-space: nowrap; }
+  /* equations: no sideways scrolling. Parts of an equation sit side by side and wrap
+     onto new lines on narrow screens; anything still too wide is scaled down to fit (script below). */
+  article .math { overflow: visible; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; column-gap: 2.4em; row-gap: 10px; }
+  article .math > .katex-display { margin: 0; }
+  /* .cont is the second half of one long equation (the script closes the gap when both halves share a line) */
+  article .math > .cont > .katex-display { margin: 0; }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a class="mark" href="../../"><span class="chip">SN</span>Steve Nketiah</a>
+  <div class="links"><a href="../../#projects">Projects</a><a href="#contact">Contact</a></div>
+</nav>
+
+<!-- Cover photo. --focus moves the crop point (x% y%). -->
+<div class="cover"><div class="thumb" style="--focus:50% 50%"><img src="../../assets/img/dual-active-bridge/cover.jpg" alt="Simulated series inductor current of the DAB over two switching periods at 24, 36, 48 and 60 V output"></div></div>
+
+<header class="head">
+  <div class="crumb"><a href="../../#projects">Projects</a> / Power</div>
+  <h1>Dual Active Bridge Converter</h1>
+  <p class="dek">I wanted to learn more about power electronics, so I decided to design a dual active bridge. It delivers up to 30 A at 24–60 V, and a PFC front end lets me run it from mains.</p>
+  <div class="specs">
+    <div><span class="eyebrow">Role</span><b>Power Electronics Design</b></div>
+    <div><span class="eyebrow">Timeline</span><b>2026 · in progress</b></div>
+    <div><span class="eyebrow">Key parts</span><b>SiC &amp; Si FETs · 1ED3120</b></div>
+    <div><span class="eyebrow">Read</span><b data-readtime>— min</b></div>
+  </div>
+</header>
+
+<div class="body">
+  <nav class="toc" aria-label="On this page"><span class="eyebrow">On this page</span></nav>
+
+  <article>
+    <h2 id="overview">Overview</h2>
+    <p>I wanted to learn more about power electronics, so I decided to design a dual active bridge (DAB). To make sure this is actually useful to me, I designed it to be able to deliver up to 30 A with a voltage that varies from 24 V to 60 V, and I also added a PFC to allow me to use it with mains input.</p>
+    <figure class="tex-fig wide mscroll" style="--mw:680px">
+      <img src="../../assets/img/dual-active-bridge/dab-schematic.svg" alt="DAB power stage: a 400 V bus capacitor feeds a full bridge of switches S1 to S4. The bridge drives a series inductor L and a 24:3 transformer, whose secondary feeds a second full bridge, the output capacitor and the load at 24 to 60 V" class="no-zoom">
+      <figcaption>The DAB power stage. Each full bridge makes a square wave, and the phase shift between the two square waves sets how much power goes through the series inductor \(L\).</figcaption>
+    </figure>
+
+    <h2 id="requirements">Requirements</h2>
+    <ul>
+      <li>Input: 120–240 V AC</li>
+      <li>Output: 24–60 V, 30 A max, 1.4 kW max</li>
+    </ul>
+
+    <h2 id="simulation">Simulation</h2>
+    <p>I simulated the DAB in PLECS with a power output of about 1.4 kW and a current cap of 30 A. This simulation provided me with the voltages and currents needed to design the converter.</p>
+    <figure class="wide">
+      <img src="../../assets/img/dual-active-bridge/plecs-schematic.png" alt="PLECS model of the DAB: HV full bridge HV_S1 to HV_S4, series inductor L1, transformer with turns ratio n, LV full bridge LV_S1 to LV_S4, output capacitor and resistive load, plus the phase-shifted PWM generation with dead time" loading="lazy">
+      <figcaption>The PLECS model. Both bridges run at 50% duty, and a pulse delay sets the phase shift between them. \(L = 100\,\mu\mathrm{H}\), \(f_{sw} = 100\,\mathrm{kHz}\), \(n = 8\).</figcaption>
+    </figure>
+    <figure class="sim">
+      <img src="../../assets/img/dual-active-bridge/sim/compare_iL_100pct.svg" alt="Series inductor current over two switching periods at 24, 36, 48 and 60 V output. The 24 V case has the highest peak at about 7.6 A" loading="lazy">
+      <figcaption>Series inductor current at each output voltage, at full power.</figcaption>
+    </figure>
+    <figure class="sim">
+      <img src="../../assets/img/dual-active-bridge/sim/compare_iSec_100pct.svg" alt="Transformer secondary current over two switching periods at 24, 36, 48 and 60 V output. The 24 V case peaks at about 59 A" loading="lazy">
+      <figcaption>Transformer secondary current at each output voltage, at full power.</figcaption>
+    </figure>
+
+    <h3 id="waveforms">Waveforms at each operating point</h3>
+    <div class="sim-pick" role="group" aria-label="Choose a simulation plot">
+      <div class="grp" data-key="v"><span class="eyebrow">Output</span>
+        <button class="pill" data-val="24V" aria-pressed="false">24 V</button>
+        <button class="pill" data-val="36V" aria-pressed="false">36 V</button>
+        <button class="pill" data-val="48V" aria-pressed="true">48 V</button>
+        <button class="pill" data-val="60V" aria-pressed="false">60 V</button>
+      </div>
+      <div class="grp" data-key="p"><span class="eyebrow">Plot</span>
+        <button class="pill" data-val="transformer" aria-pressed="true">Transformer</button>
+        <button class="pill" data-val="mosfets" aria-pressed="false">MOSFETs</button>
+        <button class="pill" data-val="bridge_dc" aria-pressed="false">Bridge DC side</button>
+        <button class="pill" data-val="output" aria-pressed="false">Output</button>
+      </div>
+    </div>
+    <figure class="sim" id="sim-view" style="margin-top:0">
+      <img src="../../assets/img/dual-active-bridge/sim/48V_100pct_transformer.svg" alt="Simulated transformer currents at 48 V output" loading="lazy">
+      <figcaption>Transformer currents at 48 V out.</figcaption>
+    </figure>
+
+    <h2 id="mosfets">DAB MOSFET Design</h2>
+    <h3 id="sim-results">Simulation results</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Output</th><th class="num">Power</th><th class="num">HV FET peak</th><th class="num">HV FET RMS</th><th class="num">LV FET peak</th><th class="num">LV FET RMS</th></tr></thead>
+      <tbody>
+        <tr><td>24 V / 30 A</td><td class="num">720 W</td><td class="num">7.6 A</td><td class="num">3.1 A</td><td class="num">59.0 A</td><td class="num">24.3 A</td></tr>
+        <tr><td>36 V / 30 A</td><td class="num">1080 W</td><td class="num">6.4 A</td><td class="num">3.0 A</td><td class="num">48.3 A</td><td class="num">24.0 A</td></tr>
+        <tr><td>48 V / 29.2 A</td><td class="num">1400 W</td><td class="num">5.0 A</td><td class="num">3.1 A</td><td class="num">43.1 A</td><td class="num">25.7 A</td></tr>
+        <tr><td>60 V / 23.3 A</td><td class="num">1400 W</td><td class="num">5.6 A</td><td class="num">2.7 A</td><td class="num">54.2 A</td><td class="num">24.1 A</td></tr>
+      </tbody>
+    </table></div>
+    <p class="table-note">Current through each FET at full power. RMS values are taken over one switching period once the converter has settled.</p>
+
+    <h3 id="primary-fet">Primary side FET</h3>
+    <p>For the HV side switches, I will be going with SiC MOSFETs instead of the traditional silicon ones because they typically have a higher voltage rating than silicon FETs. They also switch faster than silicon MOSFETs, so there should be less switching loss (this might not be that significant since the DAB has ZVS). Since I plan on boosting the rectified AC voltage to 400 V, I am choosing a switch that can handle above 600 V to protect it from unexpected overshoots. The MOSFET should be able to handle more than 14 A peaks.</p>
+    <p>I am going with the IMT65R060M2HXUMA1 because it was the cheapest MOSFET I could find that could handle my requirements.</p>
+
+    <h3 id="secondary-fet">Secondary side FETs</h3>
+    <p>For the LV side switches, I am going with silicon switches because they have a lower \(R_{DS(on)}\), so there should be lower conduction losses. This is the number one constraint since the max RMS current that flows through them is around 26 A.</p>
+    <p>For the LV side, I am going with the IPT015N10N5ATMA1. It has a very low \(R_{DS(on)}\), so the conduction losses are very small.</p>
+    <p>I will simulate the thermal losses of both FETs in PLECS later.</p>
+
+    <h2 id="gate-driver">Gate Driver Choice</h2>
+    <p>For the gate driver, there are two main requirements: current and isolation. It should be able to provide enough current to drive the FETs, and it should have a high enough isolation to block up to 400 V. I decided to go with the 1ED3120MC12HXUMA1 for both the SiC FETs and the Si FETs. This gate driver has an output UVLO that turns on at 10 V (max) and off at 8 V (min). Ideally, I am supposed to use gate drivers with different UVLO voltages for the different drive voltages (18 V for SiC FETs and 12 V for Si FETs), but I want to consolidate the BOM so I don’t have to buy so many parts.</p>
+    <p>Below are the calculations. The drain voltage swings during the Miller plateau, so the gate current needed to switch at the datasheet speed is:</p>
+    <div class="math">$$ I_G = \frac{Q_{GD}}{t} $$</div>
+    <p>where \(t\) is the datasheet rise time \(t_r\) or fall time \(t_f\), both measured with \(R_{G,ext} = 1.8\,\Omega\).</p>
+    <p><strong>SiC (IMT65R060M2H):</strong> \(Q_{GD} = 3.6\,\mathrm{nC}\), \(t_r = 5.6\,\mathrm{ns}\), \(t_f = 4.8\,\mathrm{ns}\)</p>
+    <div class="math">$$ I_{G,on} = \frac{3.6\,\mathrm{nC}}{5.6\,\mathrm{ns}} = 0.64\,\mathrm{A} $$ $$ I_{G,off} = \frac{3.6\,\mathrm{nC}}{4.8\,\mathrm{ns}} = 0.75\,\mathrm{A} $$</div>
+    <p><strong>Si (IPT015N10N5):</strong> \(Q_{GD} = 34\,\mathrm{nC}\), \(t_r = t_f = 30\,\mathrm{ns}\)</p>
+    <div class="math">$$ I_{G,on} = I_{G,off} = \frac{34\,\mathrm{nC}}{30\,\mathrm{ns}} = 1.13\,\mathrm{A} $$</div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>FET</th><th class="num">Required I<sub>G</sub></th><th class="num">Driver minimum</th><th class="num">Margin</th></tr></thead>
+      <tbody>
+        <tr><td>SiC (IMT65R060M2H)</td><td class="num">0.75 A</td><td class="num">2.0 A</td><td class="num">2.7×</td></tr>
+        <tr><td>Si (IPT015N10N5)</td><td class="num">1.13 A</td><td class="num">2.0 A</td><td class="num">1.8×</td></tr>
+      </tbody>
+    </table></div>
+    <p>The 1ED3120 is rated for 5.5 A typical and 2.0 A minimum peak output current. Even at its guaranteed minimum, it supplies more gate current than either FET needs to switch at its datasheet speed, so it works for both bridges.</p>
+
+    <h2 id="magnetics">Magnetics</h2>
+    <h3 id="transformer">Transformer</h3>
+    <p>Design goals:</p>
+    <ul>
+      <li>8:1 turns ratio</li>
+      <li>Primary: \(V_p = 400\,\mathrm{V}\), \(I_p = 4.48\,\mathrm{A}\)</li>
+      <li>Secondary: \(V_s = 60\,\mathrm{V}\), \(I_s = 37.6\,\mathrm{A}\)</li>
+    </ul>
+    <p>For the core, I chose an ETD59/31/22 in 3C95 ferrite. I am choosing this material because its flux doesn’t change too much at high temperatures. To size the windings, I started from Faraday’s law:</p>
+    <div class="math">$$ v = N\frac{d\Phi}{dt} \;\Rightarrow\; \Phi = \frac{1}{N}\int v(t)\,dt $$ $$ B = \frac{\Phi}{A_e} = \frac{1}{NA_e}\int v(t)\,dt $$</div>
+    <p>The bridge applies a square wave, so over half a period the flux swings by:</p>
+    <div class="math">$$ \Delta B = \frac{V\,T_s/2}{NA_e} = \frac{V}{2NfA_e} $$ $$ B_{pk} = \frac{\Delta B}{2} = \frac{V}{4NfA_e} $$</div>
+    <p>I want \(B_{pk}\) to be around 0.1 T to reduce core losses. With \(A_e = 368\,\mathrm{mm^2}\), \(f = 100\,\mathrm{kHz}\) and \(V = 400\,\mathrm{V}\):</p>
+    <div class="math">$$ N = \frac{400}{4(100\times10^3)(0.1)(368\times10^{-6})} = 27.2 $$</div>
+    <p>For an 8:1 ratio, \(27/8 = 3.39\), so I went with 24:3. This gives an actual peak flux density of:</p>
+    <div class="math">$$ B_{pk} = \frac{400}{4(100\times10^3)(24)(368\times10^{-6})} = 0.113\,\mathrm{T} $$</div>
+    <p>The magnetizing inductance, with \(A_L = 8200\,\mathrm{nH/turn^2}\), is \(8.2\,\mu\mathrm{H}\times 24^2 = 4.7\,\mathrm{mH}\).</p>
+    <p>For the core loss, I scaled the datasheet loss density at 200 mT with the Steinmetz equation:</p>
+    <div class="math">$$ P_v = P_{ref}\left(\frac{B}{B_{ref}}\right)^{\beta} $$ $$ \left(\frac{113}{200}\right)^{2.6} = 0.23 $$</div>
+    <div class="math">$$ 25\,{}^\circ\mathrm{C}:\; P_v = 350 \times 0.23 = 79\,\mathrm{kW/m^3} $$ $$ P = P_vV_e = 79 \times 51.5\times10^{-6} = 4.1\,\mathrm{W} $$</div>
+    <div class="math">$$ 100\,{}^\circ\mathrm{C}:\; P_v = 290 \times 0.23 = 66\,\mathrm{kW/m^3} $$ $$ P = 66 \times 51.5\times10^{-6} = 3.4\,\mathrm{W} $$</div>
+
+    <h3 id="inductor">Series inductor</h3>
+    <p>The series inductor sets how much power the DAB can transfer. From \(v = L\,di/dt\) and \(v = N\,d\Phi/dt\), with \(\Phi = Ni/\mathcal{R}\):</p>
+    <div class="math">$$ L = \frac{N\Phi}{i} = \frac{N^2}{\mathcal{R}} = A_L N^2 $$ $$ A_L = \frac{1}{\mathcal{R}} $$ $$ \mathcal{R} = \frac{l}{\mu_0\mu_r A} $$</div>
+    <p>I am using a gapped B65879Q0150K095 core, with \(A_L = 150\,\mathrm{nH/turn^2}\). For \(L = 100\,\mu\mathrm{H}\):</p>
+    <div class="math">$$ N = \sqrt{\frac{100\,\mu\mathrm{H}}{0.15\,\mu\mathrm{H}}} = 25.8 \;\Rightarrow\; N = 26 $$ $$ L = (150\,\mathrm{nH})(26^2) = 101.4\,\mu\mathrm{H} $$</div>
+    <p>Then the flux density check:</p>
+    <div class="math">$$ B_{pk} = \frac{L\,I_{max}}{NA_e} = \frac{(101.4\times10^{-6})(5.21)}{(26)(153.8\times10^{-6})} $$ <span class="cont">$$ = 0.132\,\mathrm{T} < 330\,\mathrm{mT} $$</span></div>
+    <p>According to my simulations, the worst-case peak current in the inductor is around 7.6 A when the output is 24 V at 30 A. I designed for a peak of around 5.2 A instead because I wanted a smaller core. I will use better modulation techniques to reduce the peak current in the inductor. For the first test, I will just use an output of 48 V at 30 A using phase-shift modulation, so I should be fine.</p>
+
+    <h2 id="capacitors">Capacitor selection</h2>
+    <p>The capacitors need to be able to absorb the current ripple. Below is how I selected the HV and LV side capacitors. The bridge currents on the DC side ripple at \(2f_{sw} = 200\,\mathrm{kHz}\), and the capacitor carries the AC part of the bridge current. The voltage ripple is set by the charge it absorbs in each ripple period:</p>
+    <div class="math">$$ \Delta V_{pp} = \frac{\Delta Q}{C} $$</div>
+    <p>I aimed for a ripple of 1% of the output voltage and 1% of the 400 V bus. For heating, the bank’s combined ripple-current rating has to be more than the capacitor RMS current. These values come from the simulation:</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>V<sub>out</sub></th><th class="num">ΔQ<sub>sec</sub></th><th class="num">I<sub>C,out,rms</sub></th><th class="num">ΔQ<sub>pri</sub></th><th class="num">I<sub>C,bus,rms</sub></th></tr></thead>
+      <tbody>
+        <tr><td>24 V</td><td class="num">25.1 µC</td><td class="num">16.7 A</td><td class="num">8.01 µC</td><td class="num">3.98 A</td></tr>
+        <tr><td>36 V</td><td class="num">25.1 µC</td><td class="num">15.8 A</td><td class="num">6.01 µC</td><td class="num">3.21 A</td></tr>
+        <tr><td>48 V</td><td class="num">39.4 µC</td><td class="num">21.6 A</td><td class="num">4.57 µC</td><td class="num">2.52 A</td></tr>
+        <tr><td>60 V</td><td class="num">39.7 µC</td><td class="num">24.8 A</td><td class="num">2.28 µC</td><td class="num">1.55 A</td></tr>
+      </tbody>
+    </table></div>
+    <p class="table-note">ΔQ is the charge per 5 µs ripple period. The RMS currents are the bridge DC-side currents with their average removed.</p>
+
+    <h3 id="output-caps">Output (LV side)</h3>
+    <p>For the output, I chose the Panasonic 100SXV22M (22 µF, 100 V polymer, 3 A<sub>rms</sub> at 100 kHz). Polymer capacitors don’t lose capacitance with DC bias.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>V<sub>out</sub></th><th class="num">ΔV<sub>max</sub></th><th class="num">C<sub>min</sub> = ΔQ/ΔV<sub>max</sub></th><th class="num">I<sub>C,rms</sub></th><th class="num">Parts for RMS</th></tr></thead>
+      <tbody>
+        <tr><td>24 V</td><td class="num">0.24 V</td><td class="num">104 µF</td><td class="num">16.7 A</td><td class="num">6</td></tr>
+        <tr><td>36 V</td><td class="num">0.36 V</td><td class="num">70 µF</td><td class="num">15.8 A</td><td class="num">6</td></tr>
+        <tr><td>48 V</td><td class="num">0.48 V</td><td class="num">82 µF</td><td class="num">21.6 A</td><td class="num">8</td></tr>
+        <tr><td>60 V</td><td class="num">0.60 V</td><td class="num">66 µF</td><td class="num">24.8 A</td><td class="num">9</td></tr>
+      </tbody>
+    </table></div>
+    <p>The capacitance only needs 5 parts, so the RMS current sets the count. I went with 11 of them (242 µF, 33 A<sub>rms</sub>, bank ESR \(30/11 = 2.7\,\mathrm{m\Omega}\)):</p>
+    <div class="math">$$ \Delta V = \frac{39.7\,\mu\mathrm{C}}{242\,\mu\mathrm{F}} = 0.16\,\mathrm{V}\ (0.27\%\ \text{at}\ 60\,\mathrm{V}) $$ $$ \frac{I_{C,rms}}{I_{rated}} = \frac{24.8}{33} = 75\% $$</div>
+    <p>100 V X7R ceramics at the bridge terminals take most of the fast current edges.</p>
+
+    <h3 id="bus-caps">400 V bus (HV side)</h3>
+    <p>The 200 kHz ripple from the DAB goes into film capacitors placed right at the primary bridge. For a 4 V (1%) ripple:</p>
+    <div class="math">$$ C_{min} = \frac{\Delta Q_{pri,max}}{\Delta V_{max}} = \frac{8.01\,\mu\mathrm{C}}{4\,\mathrm{V}} = 2.0\,\mu\mathrm{F} $$</div>
+    <p>I chose two TDK B32923C3225M000 (2.2 µF polypropylene) for 4.4 µF. That gives a 1.8 V ripple at the worst case (24 V out) and 2.0 A<sub>rms</sub> per capacitor.</p>
+    <p>The PFC also puts a 120 Hz ripple on the bus. A PFC with unity power factor draws \(p_{in}(t) = P(1 - \cos 2\omega t)\), and the bulk capacitor absorbs the pulsing part:</p>
+    <div class="math">$$ \Delta V_{pp} \approx \frac{P_{in}}{\omega C V_{bus}} $$ $$ P_{in} = \frac{1400\,\mathrm{W}}{0.95} \approx 1470\,\mathrm{W}, \quad f_{line} = 60\,\mathrm{Hz} $$</div>
+    <p>A 1% (4 V) ripple would need \(C \approx 2.4\,\mathrm{mF}\). For the HV side, I am using a lower capacitance because the calculated 2.4 mF is too expensive. I am going to let the DAB controller correct for this 120 Hz ripple. I chose two KEMET ALC70A221DE630 (220 µF, 630 V) for 440 µF:</p>
+    <div class="math">$$ \Delta V_{pp} = \frac{1470}{2\pi(60)(440\,\mu\mathrm{F})(400)} = 22\,\mathrm{V}\ (5.5\%) $$ $$ I_{120\,\mathrm{Hz}} \approx \frac{P_{in}}{\sqrt{2}\,V_{bus}} = 2.6\,\mathrm{A} $$</div>
+    <p>That is 1.3 A per capacitor, against a rating of 2.04 A at 100 Hz.</p>
+
+    <h2 id="sensors" data-toc="Voltage &amp; current sensors">Voltage &amp; Current Sensors</h2>
+    <h3 id="voltage-sensor">Voltage sensor</h3>
+    <p>For the output side (LV), I will just use a simple resistor divider to step down the voltage into the ADC on my microcontroller. For the HV side, it must be isolated, so I am using the AMC3311QDWERQ1. I chose it because it has an isolated DC/DC converter to power the high-voltage side. Below are the divider calculations. The STM32’s ADC is 12-bit with a 3.3 V reference, so 1 LSB is 0.806 mV.</p>
+    <p><strong>LV side.</strong> I mapped 70 V to about 3.1 V, which covers 60 V plus margin for an overvoltage trip. With \(R_{top} = 100\,\mathrm{k\Omega}\) and \(R_{bot} = 4.7\,\mathrm{k\Omega}\) (0.1%):</p>
+    <div class="math">$$ k = \frac{4.7}{104.7} = 0.0449 $$ $$ V_{ADC}(60\,\mathrm{V}) = 2.69\,\mathrm{V} $$ $$ V_{ADC}(70\,\mathrm{V}) = 3.14\,\mathrm{V} $$ $$ V_{sat} = \frac{3.3}{k} = 73.5\,\mathrm{V} $$</div>
+    <p>A 10 nF capacitor across \(R_{bot}\) filters the 200 kHz ripple by about 35 dB:</p>
+    <div class="math">$$ f_c = \frac{1}{2\pi (R_{top}\parallel R_{bot}) C_f} $$ <span class="cont">$$ = \frac{1}{2\pi(4.49\,\mathrm{k\Omega})(10\,\mathrm{nF})} = 3.55\,\mathrm{kHz} $$</span> $$ 1\,\mathrm{LSB} = \frac{0.806\,\mathrm{mV}}{0.0449} = 18\,\mathrm{mV} $$</div>
+    <p><strong>HV side.</strong> The AMC3311 takes up to 2 V at its input. I set the full scale to 500 V to leave headroom above 400 V for overvoltage detection, so the divider ratio is \(2/500 = 1/250\). I split the top resistor into four 1 MΩ resistors in series to keep each one within its voltage rating:</p>
+    <div class="math">$$ R_{bot} = \frac{R_{top}}{1/k - 1} = \frac{4\,\mathrm{M\Omega}}{249} = 16.06\,\mathrm{k\Omega} \;\Rightarrow\; 16.0\,\mathrm{k\Omega} $$</div>
+    <div class="math">$$ k = \frac{16.0}{4016} = 3.984\times10^{-3} $$ $$ V_{in}(400\,\mathrm{V}) = 1.594\,\mathrm{V}, \quad V_{in}(500\,\mathrm{V}) = 1.992\,\mathrm{V} $$</div>
+    <p>The divider burns \(400^2/4.016\,\mathrm{M\Omega} = 39.8\,\mathrm{mW}\) (about 10 mW per resistor), and a 1 nF capacitor across \(R_{bot}\) puts the filter corner at 10 kHz. The AMC3311’s differential output goes through a difference amplifier with a gain of 1.5, so 500 V lands at 2.99 V on the ADC, and each LSB is 0.135 V.</p>
+
+    <h3 id="current-sensor">Current sensors</h3>
+    <p>I decided to go with a Hall-effect current sensor over a shunt resistor because I wanted one IC that would both measure the current and amplify it. For the HV side, I went with the TMCS1123B5A. It has a current measurement range of ±10.3 A. For the LV side, I chose the TMCS1123D71. It has a current measurement range of −36.3 A to 44.1 A.</p>
+
+    <h2 id="power">Power</h2>
+    <h3 id="primary-gate-drive">Primary side FET gate drive voltage</h3>
+    <p>To drive the SiC FETs, the datasheet recommends a gate drive voltage of 18 V. We also need to make sure that this 18 V is isolated.</p>
+    <p>N-channel MOSFETs need \(V_{GS}\) to be higher than the threshold voltage before the MOSFET can turn on. The issue here is that when the high-side FET turns on, its source goes up to the supply voltage, which is higher than the gate drive voltage, and so the MOSFET turns off. To fix this, we use a bootstrap circuit. It makes sure \(V_{GS}\) stays the same regardless of the voltage at the source.</p>
+    <p>Each leg runs at 50% duty, so the longest on-time is \(t_{on,max} \approx 5\,\mu\mathrm{s}\). The bootstrap capacitor has to supply the gate charge plus the driver’s quiescent current for that long. With \(Q_g = 19\,\mathrm{nC}\) and \(I_Q = 2.5\,\mathrm{mA}\), and allowing 0.5 V of droop:</p>
+    <div class="math">$$ Q_{tot} = Q_g + I_Q\,t_{on,max} = 19 + (2.5\,\mathrm{mA})(5\,\mu\mathrm{s}) = 31.5\,\mathrm{nC} $$ $$ C_{min} = \frac{31.5\,\mathrm{nC}}{0.5\,\mathrm{V}} = 63\,\mathrm{nF} $$</div>
+    <p>I chose a 1 µF, 50 V X7R capacitor (0603). After DC-bias derating, it is about 0.3 µF at 17 V, so the droop is about 105 mV. The diode is the PNU65010ERX (650 V, 1 A), which drops about 1 V:</p>
+    <div class="math">$$ V_{boot} = V_{DD} - V_F = 18 - 1.0 = 17.0\,\mathrm{V} $$</div>
+    <p>During the dead time, the low-side SiC body diode conducts and pulls the switch node about 4.3 V below ground, which can overcharge the bootstrap capacitor up to \(V_{DD} + V_{SD} - V_F = 21.3\,\mathrm{V}\). The dead time (100 ns) is a lot shorter than \(R_{boot}C_{boot} = (10\,\Omega)(0.3\,\mu\mathrm{F}) = 3\,\mu\mathrm{s}\), so it never gets there. It settles where the charge added in each dead time equals the charge used in each cycle:</p>
+    <div class="math">$$ V_{eq} = V_{boot,max} - \frac{Q_{tot}R_{boot}}{t_{dt}} $$ <span class="cont">$$ = 21.3 - \frac{(31.5\,\mathrm{nC})(10\,\Omega)}{100\,\mathrm{ns}} \approx 18.2\,\mathrm{V} $$</span></div>
+    <p>Even in the worst case (\(V_{SD} = 5\,\mathrm{V}\), no quiescent current), it settles at about 20.1 V, which is still 3 V below the 23 V gate limit. The 10 Ω bootstrap resistor also limits the startup inrush to \(17/10 = 1.7\,\mathrm{A}\).</p>
+    <p>I also added capacitors to the low-side gate drivers to provide the high currents needed to drive the gate. Each low-side FET pulls 19 nC per switching event, and I allowed a 0.2 V droop:</p>
+    <div class="math">$$ C_{min} = \frac{Q_g}{\Delta V_{max}} = \frac{19\,\mathrm{nC}}{0.2\,\mathrm{V}} = 95\,\mathrm{nF} $$</div>
+    <p>I used a 1 µF, 50 V X7R (0805) at each driver. At 18 V it derates to about 0.4 µF, so the droop is \(19\,\mathrm{nC}/0.4\,\mu\mathrm{F} \approx 48\,\mathrm{mV}\).</p>
+    <p>To provide the 18 V supply, I used the Murata MGJ1D121802VMC-R7. It is only 1 W, so it can only provide about 49 mA of current. I need to make sure that the current draw from the gate drivers is under this limit. The 18 V rail drives five FETs: the four in the primary bridge (the high-side ones through their bootstrap capacitors) and the PFC FET.</p>
+    <div class="math">$$ I_{gate} = 5 \times 19\,\mathrm{nC} \times 100\,\mathrm{kHz} = 9.5\,\mathrm{mA} $$ $$ I_{quiescent} = 5 \times 2.5\,\mathrm{mA} = 12.5\,\mathrm{mA} $$</div>
+    <div class="math">$$ I_{18\mathrm{V}} = 9.5 + 12.5 = 22\,\mathrm{mA} $$ $$ P_{18\mathrm{V}} = (18\,\mathrm{V})(22\,\mathrm{mA}) \approx 0.4\,\mathrm{W} $$</div>
+    <p>That is about 45% of the module’s rating, and it is still above the 10% minimum load the module needs to keep its output from rising.</p>
+
+    <h3 id="secondary-gate-drive">Secondary side FET gate drive voltage</h3>
+    <p>On this side, I am not going to use any isolation, so I will drive the MOSFETs using the 12 V provided by the AC/DC converter used to power the MCU. The four secondary FETs have a lot more gate charge (about 238 nC each at 11.3 V), so together they draw about 96 mA, or 1.2 W, from the 12 V rail.</p>
+
+    <h3 id="aux-power">Aux power</h3>
+    <p>For powering the MCUs and the gate drivers, I am using an IRM-15-12 AC/DC power supply. It provides a 15 W, 12 V output that is used to generate the voltage rails for the MCU and gate drivers.</p>
+
+    <h2 id="pfc">PFC Design</h2>
+    <p>I chose a boost PFC for this converter because it only requires one switch signal. The MCU has only two timers with complementary channels. Since I am using these two timers for the DAB H-bridges, I have none left for a totem-pole PFC. I am fine with the slightly lower efficiency of the boost PFC.</p>
+    <p>I designed the inductor at the worst case: low line and full power.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Parameter</th><th class="num">Value</th></tr></thead>
+      <tbody>
+        <tr><td>DAB maximum output power, \(P_o\)</td><td class="num">1400 W</td></tr>
+        <tr><td>Assumed DAB efficiency, \(\eta_{DAB}\)</td><td class="num">96%</td></tr>
+        <tr><td>Assumed PFC efficiency, \(\eta_{PFC}\)</td><td class="num">97%</td></tr>
+        <tr><td>Minimum line voltage (120 V − 10%), \(V_{rms,min}\)</td><td class="num">108 V</td></tr>
+        <tr><td>Bus voltage, \(V_o\)</td><td class="num">400 V</td></tr>
+        <tr><td>Switching frequency, \(f_s\)</td><td class="num">100 kHz</td></tr>
+        <tr><td>Ripple target (fraction of line peak current), \(r\)</td><td class="num">30%</td></tr>
+        <tr><td>Overcurrent trip level, \(I_{trip}\)</td><td class="num">26 A</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3 id="line-current">Input power and line current</h3>
+    <p>Working backwards from the load through both stages:</p>
+    <div class="math">$$ P_{in} = \frac{P_o}{\eta_{DAB}\,\eta_{PFC}} = \frac{1400}{0.96 \times 0.97} \approx 1503\,\mathrm{W} $$</div>
+    <p>With a power factor close to 1, the PFC looks like a resistor to the line, so:</p>
+    <div class="math">$$ I_{rms} = \frac{P_{in}}{V_{rms,min}} = \frac{1503}{108} \approx 13.9\,\mathrm{A} $$ $$ I_{pk} = \sqrt{2}\,I_{rms} \approx 19.7\,\mathrm{A} $$</div>
+
+    <h3 id="pfc-inductance">Inductance</h3>
+    <p>The rectified input is \(|v_{in}(\theta)| = V_{pk}\sin\theta\). In continuous conduction, the boost duty cycle is \(d = 1 - |v_{in}|/V_o\), so the peak-to-peak ripple in each switching period is:</p>
+    <div class="math">$$ \Delta i_L(\theta) = \frac{|v_{in}(\theta)|\left(1 - |v_{in}(\theta)|/V_o\right)}{L f_s} $$</div>
+    <p>This is largest where \(|v_{in}| = V_o/2 = 200\,\mathrm{V}\). At low line, the peak is only \(V_{pk} = \sqrt{2}\times108 \approx 152.7\,\mathrm{V}\), which never reaches 200 V, so the worst-case ripple happens at the line peak. The ripple target is \(\Delta I_L = 0.3 \times 19.7 \approx 5.9\,\mathrm{A}\), and solving at the line peak gives:</p>
+    <div class="math">$$ L = \frac{V_{pk}\left(1 - V_{pk}/V_o\right)}{f_s\,\Delta I_L} = \frac{152.7\,(1 - 0.382)}{(100\times10^3)(5.9)} \approx 160\,\mu\mathrm{H} $$</div>
+
+    <h3 id="pfc-currents">Inductor currents</h3>
+    <p>The inductor carries the rectified line current plus the switching ripple:</p>
+    <div class="math">$$ I_{L,pk} = I_{pk} + \frac{\Delta I_L}{2} = 19.7 + 2.95 \approx 22.6\,\mathrm{A} $$ $$ I_{L,avg} = \frac{2}{\pi}I_{pk} \approx 12.5\,\mathrm{A} $$</div>
+    <p>The ripple at each angle is a triangle with an RMS value of \(\Delta i_L(\theta)/\sqrt{12}\). With \(k = V_{pk}/V_o = 0.382\), averaging over the half cycle gives:</p>
+    <div class="math">$$ I_{ripple,rms}^2 = \frac{1}{12}\left(\frac{\Delta I_L}{1-k}\right)^2\left[\frac{1}{2} - \frac{8k}{3\pi} + \frac{3k^2}{8}\right] $$ <span class="cont">$$ \Rightarrow\; I_{ripple,rms} \approx 1.3\,\mathrm{A} $$</span></div>
+    <div class="math">$$ I_{L,rms} = \sqrt{13.9^2 + 1.3^2} \approx 14.0\,\mathrm{A} $$</div>
+    <p>At a fixed input power, the relative ripple grows at high line because the line current falls while the ripple stays close to its maximum of \(V_o/(4Lf_s) \approx 6.25\,\mathrm{A}\):</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th class="num">V<sub>rms</sub></th><th class="num">I<sub>pk</sub></th><th class="num">ΔI<sub>L</sub></th><th class="num">ΔI<sub>L</sub>/I<sub>pk</sub></th><th class="num">I<sub>L,pk</sub></th><th class="num">I<sub>rms</sub></th></tr></thead>
+      <tbody>
+        <tr><td class="num">108 V</td><td class="num">19.7 A</td><td class="num">5.9 A</td><td class="num">30%</td><td class="num">22.6 A</td><td class="num">13.9 A</td></tr>
+        <tr><td class="num">120 V</td><td class="num">17.7 A</td><td class="num">6.1 A</td><td class="num">34%</td><td class="num">20.8 A</td><td class="num">12.5 A</td></tr>
+        <tr><td class="num">216 V</td><td class="num">9.8 A</td><td class="num">6.3 A</td><td class="num">64%</td><td class="num">13.0 A</td><td class="num">7.0 A</td></tr>
+        <tr><td class="num">240 V</td><td class="num">8.9 A</td><td class="num">6.3 A</td><td class="num">71%</td><td class="num">12.0 A</td><td class="num">6.3 A</td></tr>
+        <tr><td class="num">264 V</td><td class="num">8.1 A</td><td class="num">6.3 A</td><td class="num">78%</td><td class="num">11.2 A</td><td class="num">5.7 A</td></tr>
+      </tbody>
+    </table></div>
+    <p class="table-note">At 216 V and above, ΔI<sub>L</sub> is the maximum ripple over the line cycle, so I<sub>L,pk</sub> is an upper bound.</p>
+    <p>The converter only stays in continuous conduction over the whole line cycle while the average current is more than half the ripple. That is hardest near the zero crossings, which gives:</p>
+    <div class="math">$$ P > \frac{V_{rms}^2}{2Lf_s} $$ $$ 2Lf_s = 32\,\Omega $$</div>
+    <p>So full CCM needs about 365 W at 108 V, 450 W at 120 V and 2.2 kW at 264 V. Below these levels, the converter goes into DCM near the zero crossings, which the controller’s duty feedforward has to handle.</p>
+
+    <h3 id="pfc-core">Core</h3>
+    <p>Choosing a peak flux density of \(B_{max} = 0.28\,\mathrm{T}\) at the trip current, a current density of \(J = 5\,\mathrm{A/mm^2}\) and a window fill factor of \(K_u = 0.4\):</p>
+    <div class="math">$$ A_p = \frac{L\,I_{trip}\,I_{rms}}{B_{max}\,J\,K_u} = \frac{(160\times10^{-6})(26)(13.9)}{(0.28)(5\times10^6)(0.4)} \approx 10.3\,\mathrm{cm^4} $$</div>
+    <p>I went with the same core as the transformer, an ETD59/31/22 in 3C95, which has an area product of about 13.5 cm⁴. The minimum saturation flux density of 3C95 is 330 mT at 100 °C, so designing for 0.28 T at the trip current keeps about 15% margin. The number of turns is:</p>
+    <div class="math">$$ N = \frac{L\,I_{trip}}{B_{max}\,A_e} = \frac{(160\times10^{-6})(26)}{(0.28)(368\times10^{-6})} = 40.4 \;\Rightarrow\; N = 40 $$</div>
+    <div class="math">$$ B(22.6\,\mathrm{A}) = \frac{L\,I_{L,pk}}{NA_e} \approx 0.25\,\mathrm{T} $$ $$ B(26\,\mathrm{A}) \approx 0.28\,\mathrm{T} $$</div>
+    <p>Neglecting fringing, the total air gap is:</p>
+    <div class="math">$$ l_g = \frac{\mu_0 N^2 A_e}{L} - \frac{l_e}{\mu_r} $$ <span class="cont">$$ = \frac{(4\pi\times10^{-7})(40^2)(368\times10^{-6})}{160\times10^{-6}} - \frac{139\,\mathrm{mm}}{2000} \approx 4.55\,\mathrm{mm} $$</span></div>
+    <p>The gap is made with spacers between the core halves. A spacer gaps both the centre leg and the outer legs, so each spacer is about half the total gap, 2.3 mm. At a gap this large, fringing makes the effective area bigger, so the real spacer ends up thicker (about 3.7 mm with fringing). In practice, I will start with about 3 mm spacers and adjust until an LCR meter reads 160 µH.</p>
+    <p>For the core loss, the biggest flux swing is at the line peak at low line:</p>
+    <div class="math">$$ \Delta B = \frac{L\,\Delta I_L}{NA_e} = \frac{(160\times10^{-6})(5.9)}{(40)(368\times10^{-6})} $$ <span class="cont">$$ \approx 64\,\mathrm{mT}\ \text{peak-to-peak} $$</span></div>
+    <div class="math">$$ P_v \approx 485\,\mathrm{kW/m^3}\left(\frac{32}{200}\right)^{2.6} \approx 4\,\mathrm{kW/m^3} \;\Rightarrow\; P_{core} \approx 0.2\,\mathrm{W} $$</div>
+    <p>The core loss is tiny, so the inductor will be limited by copper loss. I’m still finalizing the winding.</p>
+
+    <div class="tags"><span class="pill">Power electronics</span><span class="pill">Dual active bridge</span><span class="pill">PFC</span><span class="pill">Magnetics design</span><span class="pill">PLECS</span></div>
+  </article>
+</div>
+
+<!-- Three related projects (thumbs live at assets/img/<slug>/thumb.jpg) -->
+<section class="related" aria-labelledby="related-h">
+  <div class="related-head"><h2 id="related-h">More projects</h2><a href="../../#projects">All projects →</a></div>
+  <div class="grid">
+    <a class="card" href="../power-distribution-board/"><div class="thumb"><img src="../../assets/img/power-distribution-board/thumb.jpg" alt="" loading="lazy"></div><div><h3>Power Distribution Board</h3></div></a>
+    <a class="card" href="../foc-motor-driver/"><div class="thumb"><img src="../../assets/img/foc-motor-driver/thumb.jpg" alt="" loading="lazy"></div><div><h3>FOC Motor Driver</h3></div></a>
+    <a class="card" href="../stepper-motor-drivers/"><div class="thumb"><img src="../../assets/img/stepper-motor-drivers/thumb.jpg" alt="" loading="lazy"></div><div><h3>Stepper Motor Drivers</h3></div></a>
+  </div>
+</section>
+
+<footer class="foot" id="contact">
+  <span>© 2026 Steve Adinkrah Nketiah</span>
+  <a class="text" href="mailto:steve.adinkrah@gmail.com">steve.adinkrah@gmail.com</a>
+  <div class="socials">
+    <a class="icon li sm" href="https://www.linkedin.com/in/steve-nketiah-0841b5292/" target="_blank" rel="noopener" aria-label="LinkedIn"><img src="../../assets/img/linkedin.png" alt=""></a>
+    <a class="icon sm" href="mailto:steve.adinkrah@gmail.com" aria-label="Email"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm9 7.2L4.4 7H4v.8l8 5.4 8-5.4V7h-.4z"/></svg></a>
+  </div>
+</footer>
+
+<script src="../../assets/js/site.js?v=20261004"></script>
+<script>
+  // shrink any equation that is wider than the text column, so nothing scrolls sideways
+  (function () {
+    function fit() {
+      document.querySelectorAll("article .math").forEach(function (m) {
+        var cw = m.clientWidth;
+        m.querySelectorAll(".katex-display").forEach(function (d) {
+          d.style.fontSize = "";
+          var w = d.getBoundingClientRect().width;
+          if (w > cw) d.style.fontSize = (Math.floor(cw / w * 1000) / 10) + "%";
+        });
+        m.querySelectorAll(".cont").forEach(function (c) {
+          c.style.marginLeft = "";
+          var prev = c.previousElementSibling;
+          if (prev && c.getBoundingClientRect().left >= prev.getBoundingClientRect().right) c.style.marginLeft = "-2.1em";
+        });
+      });
+    }
+    window.addEventListener("load", function () { fit(); if (document.fonts) document.fonts.ready.then(fit); });
+    window.addEventListener("resize", fit);
+  })();
+
+  // simulation picker: swap the plot for the chosen output voltage and plot type
+  (function () {
+    var fig = document.getElementById("sim-view");
+    if (!fig) return;
+    var img = fig.querySelector("img"), cap = fig.querySelector("figcaption");
+    var names = { transformer: "Transformer currents", mosfets: "Current in one HV and one LV switch",
+                  bridge_dc: "Bridge currents on the DC side", output: "Output voltage, capacitor current and load current" };
+    var state = { v: "48V", p: "transformer" };
+    document.querySelectorAll(".sim-pick .grp").forEach(function (g) {
+      g.querySelectorAll(".pill").forEach(function (b) {
+        b.addEventListener("click", function () {
+          g.querySelectorAll(".pill").forEach(function (x) { x.setAttribute("aria-pressed", x === b); });
+          state[g.dataset.key] = b.dataset.val;
+          img.src = "../../assets/img/dual-active-bridge/sim/" + state.v + "_100pct_" + state.p + ".svg";
+          var t = names[state.p] + " at " + state.v.replace("V", " V") + " out.";
+          img.alt = "Simulated " + t.charAt(0).toLowerCase() + t.slice(1);
+          cap.textContent = t;
+        });
+      });
+    });
+  })();
+</script>
+</body>
+</html>

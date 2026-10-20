@@ -71,6 +71,14 @@
       <li>Cost: Less than $30</li>
     </ul>
 
+    <h2 id="block-diagram">Block diagram</h2>
+    <figure>
+      <img src="../../assets/img/foc-motor-driver/block-diagram.png" alt="FOC driver block diagram: the 24 to 60 V input feeds the gate driver, which makes 7 V and 3.3 V, and a 7 V to 5 V LDO. The MCU drives the gate driver, which switches the MOSFET inverter connected to the motor connector. Current sense resistors feed the gate driver; the magnetic encoder, onboard temperature sensor, external encoder and external thermistor feed the MCU. SWD, USB and CAN-FD connect to the MCU, which also drives an RGB LED" loading="lazy">
+      <figcaption>Block diagram of the FOC driver.</figcaption>
+    </figure>
+    <p>The input voltage powers both the inverter and all the low-voltage rails. The 6EDL7151 gate driver has a built-in buck converter that steps the bus down to 7 V and an LDO that makes the 3.3 V for the MCU. A separate LDO takes the 7 V down to 5 V. The MCU sends PWM signals to the gate driver, and the gate driver switches the MOSFET inverter that powers the motor.</p>
+    <p>For feedback, the current sense resistors go into the gate driver’s current sense amplifiers, and the magnetic encoder and onboard temperature sensor go into the MCU. There are also connectors for an external encoder and an external thermistor. For communication, the board has SWD for programming, USB and CAN-FD. The RGB LED shows the status of the board.</p>
+
     <h2 id="mosfet">MOSFET</h2>
     <p>The MOSFET is arguably the most important part of the driver. It is used in the inverter and it is responsible for converting the DC input into the AC voltage used to power the motor. When selecting a MOSFET, there were a lot of things I considered. The first was the voltage and current ratings, which should exceed my design ratings so the MOSFETs don’t get destroyed. Another factor that greatly affects MOSFET performance is thermal behavior. Even though most of the MOSFETs I considered had very high current ratings, thermal performance determines how much current we can actually run through them. So to choose a MOSFET, I calculated the power dissipated in each one (conduction, switching, and gate drive losses). Then I ranked them by junction temperature and chose the best one. Due to the space constraints of this board, I chose MOSFETs with a 5 × 6 mm footprint. The table below shows the results and the methodology.</p>
 
